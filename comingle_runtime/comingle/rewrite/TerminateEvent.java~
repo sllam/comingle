@@ -1,8 +1,0 @@
-
-package comingle.rewrite;
-
-public class TerminateEvent {
-
-	public TerminateEvent() { }
-
-}
