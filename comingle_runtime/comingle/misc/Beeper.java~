@@ -1,0 +1,27 @@
+package comingle.misc;
+
+public class Beeper {
+
+	private boolean beeped;
+
+	public Beeper() {
+		beeped = false;
+	}
+
+	public synchronized void wait_for_beep() {
+		while(!beeped) {
+			try { wait(); } catch (InterruptedException e) { }
+		}
+		beeped = false;
+	}
+
+	public synchronized void beep() {
+		beeped = true;
+		notifyAll();
+	}
+
+	public synchronized void unbeep() {
+		beeped = false;
+	}
+
+}

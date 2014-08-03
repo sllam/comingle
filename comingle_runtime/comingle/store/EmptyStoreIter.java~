@@ -1,0 +1,18 @@
+package comingle.store;
+
+import comingle.facts.Fact;
+
+class EmptyStoreIter<F extends Fact> implements StoreIter<F> {
+
+	public EmptyStoreIter() { }
+
+	public void init_iter() { }
+
+	public boolean contains(F elem) { return false; }
+
+	public F get_next_alive() { return null; }
+
+	public F get_next() { return null; }
+
+}
+

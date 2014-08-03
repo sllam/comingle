@@ -1,0 +1,20 @@
+
+
+ensem merger {
+
+	predicate a :: [int] -> fact.
+	predicate b :: int   -> fact.
+	predicate c :: int   -> fact.
+	predicate d :: {int} -> fact.
+
+	rule splitAs :: [X]a(Ys) --o { [X]b(Y) | Y <- Ys }.
+
+	rule mergeBs :: [X]c(Z),{ [X]b(Y) | Y <- Ys } --o [X]d(Ys).
+
+}
+
+execute merger {
+	exists L0.
+	[L0]c(4).
+	[L0]a([1,2,3]).
+}

@@ -1,0 +1,58 @@
+package comingle.store;
+
+import java.util.LinkedList;
+import java.util.ListIterator;
+
+import comingle.facts.Fact;
+
+public class ListStoreIter<F extends Fact> implements StoreIter<F> {
+
+	private LinkedList<F> store;
+	private ListIterator<F> iter;
+
+	public ListStoreIter() {
+		store = new LinkedList<F>();
+		iter  = store.listIterator();
+	}
+
+	public ListStoreIter(LinkedList<F> st) {
+		store = st;
+		iter  = st.listIterator();
+	}
+
+	public void add(F f) {
+		store.add(f);
+	}
+
+	public void init_iter() { 
+		iter = store.listIterator();
+	}
+
+	public boolean contains(F elem) { 
+		ListIterator<F> local_iter = store.listIterator();
+		while(local_iter.hasNext()) {
+			F cons = local_iter.next();
+			if(elem.equals(cons)) { return true; }
+		}
+		return false;
+	}
+
+	public F get_next_alive() { 
+		while(iter.hasNext()) {
+			F cons = iter.next();
+			if(cons.is_alive()) { 
+				return cons; 
+			} 
+		}
+		return null;
+	}
+
+	public F get_next() {
+		if(iter.hasNext()) {
+			return iter.next();
+		}
+		return null;
+	}
+
+}
+

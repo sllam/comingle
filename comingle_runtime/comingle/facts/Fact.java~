@@ -1,0 +1,37 @@
+package comingle.facts;
+
+import comingle.rewrite.RewriteMachine;
+
+public abstract class Fact {
+
+	protected static int fact_id = 0;
+
+	protected int id;
+	public boolean alive;
+	public int loc;
+	public int priority;
+
+	public Fact(int loc) {
+		alive = true;
+		this.loc = loc;
+		id = fact_id;
+		fact_id += 1;
+		priority = 1;
+	}
+
+	public void set_priority(int p) { priority = p; }
+
+	public int get_loc() { return loc; }
+
+	public int fact_idx() { return 0; }
+
+	public boolean is_alive() { return alive; }
+
+	public void set_dead() { alive = false; }
+
+	public int identity() { return id; }
+
+	public boolean equals(Fact f) { return id == f.identity(); }
+
+}
+

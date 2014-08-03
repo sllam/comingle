@@ -1,0 +1,10 @@
+package comingle.store;
+
+import comingle.facts.Fact;
+
+public interface StoreIter<F extends Fact> {
+	public void init_iter();
+	public boolean contains(F elem);
+	public F get_next_alive();
+	public F get_next();
+}

@@ -1,0 +1,25 @@
+
+ensem shortpath {
+
+	predicate trans_req :: (loc,int) -> fact.
+	predicate edge :: (loc,int) -> fact.
+	predicate path :: (loc,int) -> fact.
+
+	rule base  :: [X]edge(Y,D) \ 1 --o [X]path(Y,D).
+	rule elim  :: [X]path(Y,D1) \ [X]path(Y,D2) | D1 <= D2 --o 1.
+	rule trans_1 :: [X]edge(Y,D) \ 1 --o [Y]trans_req(X,D).
+	rule trans_2 :: [Y]trans_req(X,D1), [Y]path(Z,D2) \ 1 | X != Z --o [X]path(Z,D1+D2).
+}
+
+execute shortpath {
+	exists L0, L1, L2, L3, L4, L5, L6, L7, L8.
+	[L0]edge(L1,7), [L0]edge(L2,4).
+	[L1]edge(L3,2).
+	[L2]edge(L3,20).
+	[L3]edge(L4,1), [L3]edge(L5,18), [L3]edge(L6,3).
+	[L4]edge(L7,40), [L4]edge(L5,1).
+	[L5]edge(L7,15), [L5]edge(L6,2).
+	[L6]edge(L7,8).
+	[L7]edge(L0,13), [L7]edge(L8,6).
+	[L8]edge(L0,4).
+}

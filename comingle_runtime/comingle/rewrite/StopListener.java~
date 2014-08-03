@@ -1,0 +1,12 @@
+
+package comingle.rewrite;
+
+import java.util.EventListener;
+
+public class StopListener implements EventListener {
+
+	public void performStopAction(StopEvent qe) {
+
+	}
+
+}

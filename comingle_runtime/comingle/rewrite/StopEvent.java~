@@ -1,0 +1,8 @@
+
+package comingle.rewrite;
+
+public class StopEvent {
+
+	public StopEvent() { }
+
+}

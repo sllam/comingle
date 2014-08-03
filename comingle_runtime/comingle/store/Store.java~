@@ -1,0 +1,36 @@
+package comingle.store;
+
+import java.util.List;
+
+import comingle.facts.Fact;
+
+public abstract class Store<F extends Fact> {
+	
+	private String name;
+
+	public void set_name(String n) { name = n; }
+
+	public String get_name() { return name; }
+
+	public void add(F elem) { }
+
+	public void add(F elem, Integer key) { }
+
+	public void remove(F elem) { }
+
+	public void remove(int pos) { }
+
+	public void purge() { }
+
+	public StoreIter<F> lookup_candidates() { return null; }
+
+	public StoreIter<F> lookup_candidates(Integer key) { return null; } 
+
+	public int size() { return 0; }
+
+	public int actual_size() { return 0; }
+
+	public List<F> toList() { return null; }
+
+}
+

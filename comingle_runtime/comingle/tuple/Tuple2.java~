@@ -1,0 +1,18 @@
+package comingle.tuple;
+
+public class Tuple2<T1,T2> {
+
+	public T1 t1;
+	public T2 t2;
+
+	public Tuple2(T1 t1, T2 t2) { this.t1 = t1; this.t2 = t2; }
+
+	public boolean equals(Tuple2<T1,T2> other) {
+		return t1.equals(other.t1) && t2.equals(other.t2);
+	}
+
+	public String toString() {
+		return String.format("(%s,%s)",t1,t2);
+	}
+
+}

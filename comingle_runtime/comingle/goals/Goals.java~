@@ -1,0 +1,19 @@
+package comingle.goals;
+
+import java.util.List;
+
+import comingle.facts.Fact;
+
+public abstract class Goals<F extends Fact> {
+
+	public boolean has_goals() { return false; }
+
+	public F next() { return null; }
+
+	public void add(F f) {  }
+
+	public void add(F f, int priority) { }
+
+	public List<F> toList() { return null; }
+
+}
