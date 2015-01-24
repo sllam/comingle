@@ -70,7 +70,7 @@ Acknowledgements
 
 Special thanks to the following:
 
-  - Nabeeha Fatima, for contributing in developing the UI frontend of the games, powered by 
+  - Nabeeha Fatima, for contributing in the development of the UI frontend of Android games, powered by 
     CoMingle.
   - Iliano Cervesato, for advise and technical discussions on the logic programming. They helped
     make CoMingle possible.
