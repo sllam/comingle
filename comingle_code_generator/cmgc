@@ -1,0 +1,26 @@
+
+source cmgc.conf
+
+if [ $# -eq 0 ];
+then
+    echo "Usage: cmgc <.cmg file>"
+    exit 1
+fi
+
+args=("$@")
+
+package_name=$(echo ${args[0]} | sed 's!.*/!!' | sed "s/.cmg//")
+curr_path=$PWD
+
+cp ${args[0]} ${TMP_PATH}/.
+
+echo "Compiling and Generating CoMingle Machine for ${args[0]}"
+
+cd ${TMP_PATH}
+
+${PY} ${CMG_LIB}/comingle/cmgc.py ${args[0]}
+
+mv ${TMP_PATH}/${package_name} ${curr_path}/.
+
+
+
