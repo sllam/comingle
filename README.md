@@ -37,6 +37,7 @@ Once you have them, proceed to https://github.com/sllam/pysetcomp , and install:
 Next you'll need MSRE's compiler, proceed to https://github.com/sllam/msre, and install ONLY its compiler:
 
 > msre$ cd compiler/msrex
+
 > msre/compiler/msrex$ sudo python setup.py install
 
 You are almost set, you should now be able to setup and install the Comingle compiler, do this by running the
@@ -53,6 +54,7 @@ Feel free to customize the make file to adjust the installation paths.
 To test Comingle, go to the example directory and try it out:
 
 > comingle$ cd examples
+
 > comingle/examples$ cmgc dragracing.cmg
 
 You'll see a bunch of output, and hopefully, no error messages. If it has ran successfully, you should
