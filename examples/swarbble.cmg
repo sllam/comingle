@@ -1,0 +1,97 @@
+
+ensem swarbble {
+
+	module comingle.lib.ExtLib import {
+		size    :: {A} -> int,
+		diff    :: ([A],[A]) -> [A],
+		format  :: (string,B) -> string,
+		format2 :: (string,C) -> string
+	}
+
+	module lib.WordLib import {
+		generateNewWord :: (int,int) -> string
+	}
+
+	predicate initGame :: ([loc],[loc],int) -> trigger.
+	predicate throwAt  :: (loc,string,string) -> trigger.
+	predicate relief   :: loc -> trigger.
+
+	predicate setup :: ([loc],[loc],int) -> fact.
+	predicate checkWord :: fact.
+	predicate checkWin  :: fact.
+	predicate word :: string -> fact.
+	predicate max   :: int -> fact.
+	predicate ally  :: loc -> fact.
+	predicate opponent :: loc -> fact.
+	predicate killAlly :: loc -> fact.
+	predicate killOpponent :: loc -> fact.
+
+	predicate refresh :: string -> actuator.
+	predicate win  :: actuator.
+	predicate lose :: actuator.
+
+	rule begin :: [X]initGame(Ps,Qs,M) 
+                            --o { [P]setup(diff(Ps,[P]),Qs,M) | P <- Ps },
+                                { [Q]setup(diff(Qs,[Q]),Ps,M) | Q <- Qs }.
+
+	rule setup :: [X]setup(As,Os, M) 
+                            --o { [X]ally(A), [X]refresh( format("%s is an ally", A) ) | A <- As }, 
+                                { [X]opponent(O), [X]refresh( format("%s is an opponent", O) ) | O <- Os },
+                                [X]max(M), [X]checkWord().
+
+	rule throw  :: [X]opponent(O) 
+                       \ [X]throwAt(O,Wd,NewWd), [X]word(Wd) 
+                            --o [X]refresh( format("You successfully threw %s at %s", (NewWd,O) ) ),
+                                [O]refresh( format2("Opponent %s throw %s at you", (X,NewWd) ) ),
+                                [O]word(NewWd), [O]checkWord(), [X]checkWord().
+
+
+	rule relief :: [X]ally(A) 
+                       \ [X]relief(A), [A]word(Wd) 
+                            --o [X]refresh( format("You relieved %s of %s", (A,Wd)) ),
+                                [A]refresh( format("Ally %s relieved you of %s", (X,Wd)) ),
+                                [X]word(Wd), [X]checkWord(), [A]checkWord().
+
+	rule empty :: {[X]word(Wd)|Wd->Wds} 
+                      \ [X]checkWord() 
+                      | (size(Wds)) == 0
+                            --o [X]refresh( format("New word generated %s", NewWd) ), 
+                                [X]word(NewWd)
+                                where NewWd = generateNewWord(3,5).
+
+	rule cry :: [X]max(M), 
+                    {[X]ally(A)|A->As}, 
+                    {[X]word(Wd)|Wd->Wds} 
+                    \ [X]checkWord() 
+                    | (size(Wds)) >= (M-3),
+                      (size(Wds)) < M 
+                           --o { [A]refresh( format("Ally %s is in trouble", X) ) | A <- As }.
+
+	rule dead :: {[X]ally(A)|A->As}, 
+                     {[X]opponent(O)|O->Os}, 
+                     {[X]word(Wd)|Wd->Wds}, 
+                     [X]max(M) 
+                     \ [X]checkWord() 
+                     | (size(Wds)) >= M
+                              --o {[A]killAlly(X)|A<-As}, 
+                                  {[O]killOpponent(X)|O<-Os},
+                                  [X]lose().
+
+	rule killA :: [X]killAlly(A), [X]ally(A) 
+                           --o [X]refresh( format("Ally %s is dead", X) ).
+
+	rule killO :: [X]killOpponent(O), [X]opponent(O) 
+                           --o [X]refresh( format("Opponent %s is dead", X) ), 
+                               [X]checkWin().
+
+	rule win :: [X]checkWin(), 
+                    {[X]opponent(O)|O->Os} | (size(Os)) == 0 
+                          --o [X]refresh( "Your team has won" ),
+                              [X]win().
+}
+
+execute swarbble {
+
+	exists L0, L1.
+
+}

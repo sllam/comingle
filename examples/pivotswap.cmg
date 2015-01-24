@@ -1,0 +1,26 @@
+
+
+ensem pivotswap {
+
+	module comingle.lib.ExtLib import {
+		size   :: {B} -> int.
+		format :: (string,A) -> string.
+	}
+
+	predicate swap    :: (loc,int) -> trigger.
+	predicate data    :: int -> fact. 
+	predicate display :: string -> actuator. 
+
+	export query data(_).
+
+	rule pivotSwap :: [X]swap(Y,P),
+                          { [X]data(D) | D -> XDs. D >= P }, 
+                          { [Y]data(D) | D -> YDs. D < P }   --o [X]display( format("Received %s items from %s", (size(YDs),Y)) ),
+                                                                 [Y]display( format("Received %s items from %s", (size(XDs),X)) ),
+                                                                 { [X]data(D) | D <- YDs }, { [Y]data(D) | D <- XDs }.
+
+}
+
+execute pivotswap {
+	exists L0, L1.
+}
