@@ -3,8 +3,8 @@ CoMingle Apps
 
 This Repository contains toy Android applications, orchestrated by CoMingle.
 
-Best Requirements
-=================
+Basic Requirements
+==================
 
 To run this apps, you'll need the following:
   - At least one Android device running Android Lollipop
@@ -54,4 +54,7 @@ Disclaimer
 These apps have been tested on 2 Nexus 4's running Android Lollipop, and 2 Samsung
 Galaxy S4's running Android KitKat. While I'm pretty certain that they are harmless 
 and not intended to do any form of harm to yourself or your mobile device, I cannot 
-be liable to any freak accidents that occur while you are running these apps. 
+be liable to any freak accidents that occur while you are running these apps. So
+please be cautious while using them. 
+
+And don't use your mobile devices while driving or operation heavy machinery. 
