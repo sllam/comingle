@@ -10,10 +10,11 @@ ensem dragracing {
 	predicate sendTap   :: trigger.
 	predicate checkExit :: loc  -> trigger.
 
-	predicate at    :: loc -> fact.
-	predicate next  :: loc -> fact.
-	predicate last  :: fact.
-	predicate all   :: [loc] -> fact.
+	predicate at   :: loc -> fact.
+	predicate rmAt :: loc -> fact.
+	predicate next :: loc -> fact.
+	predicate last :: fact.
+	predicate all  :: [loc] -> fact.
 
 	predicate renderTrack :: [loc] -> actuator.
 	predicate release   :: actuator.
@@ -22,18 +23,21 @@ ensem dragracing {
 	predicate decWinner :: loc -> actuator.
 
 	rule start :: [X]initRace(Ls) 
-                         --o { [X]has(L) | L <- Ls }, { [A]next(B) | (A,B) <- Cs }, [E]last(),
-                             { [L]all(Ls), [L]at(X), [L]renderTrack(Ls) | L <- Ls }
+                         --o { [A]next(B) | (A,B) <- Cs }, [E]last(),
+                             { [L]all(Ls), [L]at(X), [L]renderTrack(Ls) | L <- Ls },
+                             { [X]has(L) | L <- Ls }
                              where (Cs,E) = makeChain(Ls).
 
 	rule go :: [X]all(Ls) \ [X]go() 
                          --o { [L]release() | L <- Ls }. 
 
+	rule update :: [X]rmAt(Y), [X]at(Y) --o 1.
+
 	rule tap :: [X]at(Y) \ [X]sendTap() 
                          --o [Y]recvTap(X).
 
-	rule trans :: [X]next(Z) \ [X]checkExit(Y), [Y]at(X)
-                         --o [Z]has(Y), [Y]at(Z).
+	rule trans :: [X]next(Z) \ [X]checkExit(Y)
+                         --o [Z]has(Y), [Y]rmAt(X), [Y]at(Z).
 	
 	rule win :: [X]last() \ [X]all(Ls), [X]checkExit(Y)
                          --o { [L]decWinner(Y) | L <- Ls }.

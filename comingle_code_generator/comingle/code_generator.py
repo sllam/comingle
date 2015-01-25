@@ -593,7 +593,7 @@ class JavaCodeGenerator:
 
 			public class {| ensem_name |} extends RewriteMachine {
 
-				class Actuations {
+				public class Actuations {
 					{| '\\n'.join( actuation_member_codes ) |}
 				}
 
@@ -690,7 +690,7 @@ class JavaCodeGenerator:
 			execute_code = "ensem.execute( this );"
 
 		fact_dec_code = template('''
-			class {| fact_name |} extends {| ef_name |} {
+			public class {| fact_name |} extends {| ef_name |} {
 				{| '\\n'.join( arg_dec_codes ) |}
 
 				public {| fact_name |}({| ', '.join( constructor_args ) |}) { {| ' '.join( init_codes ) |} }
