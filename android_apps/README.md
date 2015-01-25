@@ -57,4 +57,4 @@ and not intended to do any form of harm to yourself or your mobile device, I can
 be liable to any freak accidents that occur while you are running these apps. So
 please be cautious while using them. 
 
-And don't use your mobile devices while driving or operation heavy machinery. 
+And don't use your mobile devices while driving or operating heavy machinery. 
