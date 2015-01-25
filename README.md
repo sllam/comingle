@@ -9,6 +9,20 @@ By Edmund S. L. Lam   sllam@qatar.cmu.edu
 Programming via Join Patterns with Guards, Propagation and More) from the Qatar National Research Fund 
 (a member of the Qatar Foundation).
 
+Contents
+========
+
+This repository contains a working copy of the Comingle compiler and runtime system, as well as some examples
+to get you started Comingling. Here's a summary of what it contains:
+
+   - comingle_code_generator: the source codes of the compiler
+   - comingle_runtime: .jar libraries of the Comingle runtime
+   - examples: basic examples of Comingle programs
+   - android_apps: small repository of android programs (eclipse project + .apk), orchestrated by Comingle.
+
+To install and use Comingle, please follow the 'Getting Started' instructions below. If you want to go
+straight into playing the Android Apps, follow the instructions in the Readme file in the 'android_apps' folder.
+
 Basic Requirements
 ==================
 
