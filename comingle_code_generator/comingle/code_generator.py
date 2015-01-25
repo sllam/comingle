@@ -533,6 +533,13 @@ class JavaCodeGenerator:
 
 		self.ensem_fact_name = "%sFact" % ensem_name
 
+		source_codes = compile_template(template('''
+			/**
+			** This Comingle Runtime is generated from the following Comingle specifications:
+			{| prog_source_text |}
+			**/
+		'''), prog_source_text=prog.get_source())
+
 		# self.ensem_info[ensem_spec['ensem_name']] = self.fact_decs
 
 		# Generate codes
@@ -582,6 +589,8 @@ class JavaCodeGenerator:
 
 			{| generated_message |}
 
+			{| source_codes |}
+
 			public class {| ensem_name |} extends RewriteMachine {
 
 				class Actuations {
@@ -630,7 +639,7 @@ class JavaCodeGenerator:
                                        , boiler_plate_codes=BOILER_PLATE_CODES, fact_member_codes=fact_member_codes
                                        , join_exec_member_codes=join_exec_member_codes, fact_exec_member_codes=fact_exec_member_codes
                                        , exec_codes=exec_codes, actuation_member_codes=actuation_member_codes, exported_store_codes=exported_store_codes
-                                       , generated_message=GENERATED_MESSAGE)
+                                       , generated_message=GENERATED_MESSAGE,source_codes=source_codes)
 
 	def generate_fact_decs(self, ensem_name, fact_idx):
 
