@@ -11,9 +11,8 @@ To run this apps, you'll need the following:
   - At least two Anroid device, each supporting Wifi-direct connections
 
 I have tested these apps on 2 Nexus 4's running Android Lollipop, and 
-2 Samsung Galaxy S4's running Android KitKat. The current network middleware
-only supports Wifi-direct, so each of the device you use must support that.
-
+2 Samsung Galaxy S4's running Android KitKat. For now, the current network 
+middleware only supports Wifi-direct.
 
 Using the Apps
 ==============
@@ -43,18 +42,19 @@ sllam@qatar.cmu.edu if you wish to report a bug, or encounter any problems while
 running the apps.
 
 Also, my apologies if you find the apps stylistically unappealing.. =P they were
-implemented and conceived by a CS major with a PhD, with no training design,
-little flare in fine arts, or even basic color sense.. =( If you feel like you can 
+implemented and conceived by a CS major with a PhD, with no design training,
+hardly any flare in fine arts, or even basic color sense.. =( If you feel you can 
 help with ideas or contribute in the development of more CoMingle powered apps, please 
-do contact me!! I definitely could use the help! =)
+do contact me, I definitely could use the help! =)
 
 Disclaimer
 ==========
 
 These apps have been tested on 2 Nexus 4's running Android Lollipop, and 2 Samsung
-Galaxy S4's running Android KitKat. While I'm pretty certain that they are harmless 
-and not intended to do any form of harm to yourself or your mobile device, I cannot 
-be liable to any freak accidents that occur while you are running these apps. So
-please be cautious while using them. 
+Galaxy S4's running Android KitKat. While I'm pretty certain that they are harmless, 
+neither are they intended to do any form of harm to yourself or your mobile device. 
+However, I cannot be liable for any freak accidents that occur while you are running 
+these apps. So please be cautious while using them. 
 
 And don't use your mobile devices while driving or operating heavy machinery. 
+
