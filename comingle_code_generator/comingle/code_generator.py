@@ -1347,11 +1347,12 @@ class JavaCodeGenerator:
 		else:
 			get_next_code = "get_next_alive()"
 
-		this_pat_vars,fact_lhs_codes,idx_var_eq = self.generate_fact_lhs(fact_idx, fact_pat, "%s" % cand_name, cand_idx, all_pat_vars(join_head_dict))
+		compre_vars = map(lambda iv: mk_cpp_var_name(iv.name), join_task.term_vars)
+
+		this_pat_vars,fact_lhs_codes,idx_var_eq = self.generate_fact_lhs(fact_idx, fact_pat, "%s" % cand_name, cand_idx, all_pat_vars(join_head_dict)-set(compre_vars))
 		iter_name = "candidates_%s" % cand_idx
 		iter_mod  = 0
 
-		compre_vars = map(lambda iv: mk_cpp_var_name(iv.name), join_task.term_vars)
 		extern_pat_vars = []
 		for pat_var in this_pat_vars:
 			if pat_var not in compre_vars:
