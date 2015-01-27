@@ -981,10 +981,13 @@ class JavaCodeGenerator:
 		idx_var_eq = []
 		mod_pat_vars = []
 		mod_inits = []
+		seen_dict = {}
 		for i in range(0,len(orig_pat_vars)):
-			if orig_pat_vars[i] in var_ctxt:
-				mod_inits.append( "%s %s%s;" % (pat_types[i],orig_pat_vars[i],head_idx) )
-				idx_var_eq.append( "Equality.is_eq(%s,%s%s)" % (orig_pat_vars[i],orig_pat_vars[i],head_idx) )
+			if orig_pat_vars[i] in var_ctxt:			
+				if orig_pat_vars[i] not in seen_dict:
+					mod_inits.append( "%s %s%s;" % (pat_types[i],orig_pat_vars[i],head_idx) )
+					idx_var_eq.append( "Equality.is_eq(%s,%s%s)" % (orig_pat_vars[i],orig_pat_vars[i],head_idx) )
+					seen_dict[orig_pat_vars[i]] = ()
 				mod_pat_vars.append( "%s%s" % (orig_pat_vars[i],head_idx) )
 			else:
 				mod_pat_vars.append( orig_pat_vars[i])
@@ -1743,7 +1746,7 @@ class JavaCodeGenerator:
 
 		join_ordering_template = template('''
 			{| source_text |}
-			{| exist_type |} {| exist_name |} = next_exist_id({| loc_var |});
+			{| exist_name |} = next_exist_id({| loc_var |});
 			{| rest_tasks_code |}
 		''')
 		template_args = { 'exist_type'  : exist_type
