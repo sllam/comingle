@@ -1,7 +1,9 @@
 CoMingle Apps
 =============
 
-This Repository contains toy Android applications, orchestrated by CoMingle.
+Toy Android applications, orchestrated by CoMingle.
+
+These Applications are Co-developed with Nabeeha Fatima (nhaque@andrew.cmu.edu)
 
 Basic Requirements
 ==================
