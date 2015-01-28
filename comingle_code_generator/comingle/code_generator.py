@@ -72,6 +72,7 @@ import comingle.rewrite.*;
 import comingle.hash.*;
 import comingle.tuple.*;
 import comingle.misc.*;
+import comingle.mset.*;
 ''')
 
 GENERATED_MESSAGE = template('''
@@ -2015,6 +2016,8 @@ class JavaCodeGenerator:
 			context_codes = cx1 + cx2
 			if t.op == 'in':
 				term_codes = "ExtLib.in(%s,%s)" % (t1_codes,t2_codes)
+			elif t.op == '==':
+				term_codes = "Equality.is_eq(%s,%s)" % (t1_codes,t2_codes)
 			else:
 				term_codes = "%s %s %s" % (t1_codes,t.op,t2_codes)
 		elif t.term_type == ast.TERM_UNAOP:
@@ -2058,7 +2061,10 @@ class JavaCodeGenerator:
 			inspect = Inspector()
 			# print "%s" % t.inferred_type
 			context_codes.append( "%s[] %s = { %s };" % (java_type_coerce.coerce_type_codes(t.type.type, True),term_var,','.join(t_codes)) )
-			term_codes = "Misc.to_list(%s)" % (term_var)
+			if t.term_type == ast.TERM_LIST:
+				term_codes = "Misc.to_list(%s)" % (term_var)
+			else:
+				term_codes = "Misc.to_mset(%s)" % (term_var)
 		elif t.term_type == ast.TERM_LISTCONS:
 			cx1,head_code = self.generate_term( t.term1 )
 			cx2,tail_code = self.generate_term( t.term2 )
@@ -2227,7 +2233,7 @@ class JavaTypeCoercion:
 	def coerce_type_codes(self, arg_type, boxed=False):
 		# print "Here! %s" % arg_type.type
 		java_type = self.coerce_type_codes( arg_type.type, True )
-		return "LinkedList<%s> " % java_type
+		return "SimpMultiset<%s> " % java_type # "LinkedList<%s> " % java_type
 
 	@visit.when(ast.TypeTuple)
 	def coerce_type_codes(self, arg_type, boxed=False):
