@@ -19,8 +19,9 @@ middleware only supports Wifi-direct.
 Using the Apps
 ==============
 
-To use these apps, you can either setup the eclipse project found in each subfolder
-of the repository, or install the Android .apk file directly into your mobile. 
+To use these apps, you can either setup the eclipse projects found here in the subfolders of this
+repository, or install the precompiled development .apk files (in the precompiled_dev_apk) folder,
+directly into your mobile. 
 
 Once you have one of the apps installed in a few of your mobile devices, you must
 establish a Wifi-direct group. To do this, use the Wifi-direct menu in your
