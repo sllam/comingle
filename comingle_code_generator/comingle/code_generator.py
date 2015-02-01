@@ -255,6 +255,7 @@ class JavaCodeGenerator:
 	def init_store_dict(self):
 		self.store_dict = {}
 		self.exported_stores = []
+		self.exported_linear_stores = []
 		for fact_idx,fact_stores in self.lookup_tables.lookup_tables.items():
 			fact_info = self.fact_dict[fact_idx]
 			fact_name = fact_info['fact_name']
@@ -296,6 +297,8 @@ class JavaCodeGenerator:
 
 				if fact_store.exported:
 					self.exported_stores.append( (fact_idx,store_info) )
+					if fact_store.type == LINEAR_LK:
+						self.exported_linear_stores.append( (fact_idx,store_info) )
 
 	def generate(self):
 		prog        = self.prog
@@ -585,6 +588,8 @@ class JavaCodeGenerator:
 		exported_store_codes = map(lambda (fact_idx,exported_store): self.generate_exported_store_member(fact_idx,exported_store) 
                                           ,self.exported_stores)
 
+		exported_linear_stores_code = self.generate_exported_linear_stores_member()
+
 		spec_code = template('''
 			{| '\\n'.join( extern_imports ) |}
 
@@ -625,6 +630,8 @@ class JavaCodeGenerator:
 
 				{| '\\n'.join( exported_store_codes ) |}
 
+				{| exported_linear_stores_code |}
+
 				{| '\\n'.join( join_exec_member_codes ) |}
 
 				{| '\\n'.join( fact_exec_member_codes ) |}
@@ -640,7 +647,7 @@ class JavaCodeGenerator:
                                        , boiler_plate_codes=BOILER_PLATE_CODES, fact_member_codes=fact_member_codes
                                        , join_exec_member_codes=join_exec_member_codes, fact_exec_member_codes=fact_exec_member_codes
                                        , exec_codes=exec_codes, actuation_member_codes=actuation_member_codes, exported_store_codes=exported_store_codes
-                                       , generated_message=GENERATED_MESSAGE,source_codes=source_codes)
+                                       , exported_linear_stores_code=exported_linear_stores_code, generated_message=GENERATED_MESSAGE,source_codes=source_codes)
 
 	def generate_fact_decs(self, ensem_name, fact_idx):
 
@@ -930,6 +937,31 @@ class JavaCodeGenerator:
 		''')
 		return compile_template(exported_store_member_code, store_type=store_info['type'], fact_name=fact_name
                                        ,store_name=store_info['name'])
+
+	def generate_exported_linear_stores_member(self):
+		ef_name = self.ensem_fact_name
+		
+		idx = 0;
+		get_store_codes = []
+		for fact_idx,store_info in self.exported_linear_stores:
+			fact_info = self.fact_dict[fact_idx]
+			fact_name = fact_info['var_name']
+			get_store_codes.append( "stores[%s] = this.get_%s();" % (idx,fact_name) )
+			idx += 1
+
+		num_of_stores = len(self.exported_linear_stores)
+
+		exported_linear_stores_member_code = template('''
+			public ConcListStore[] getLinearStores() {
+				ConcListStore[] stores = new ConcListStore[{| num_of_stores |}];
+				{| '\\n'.join( get_store_codes ) |}
+				return stores;
+			}
+		''')
+
+		return compile_template( exported_linear_stores_member_code, ef_name=ef_name
+                                       , get_store_codes=get_store_codes, num_of_stores=num_of_stores )
+		
 
 	def generate_receive_member(self, ensem_name):
 		receive_comm_codes = []
