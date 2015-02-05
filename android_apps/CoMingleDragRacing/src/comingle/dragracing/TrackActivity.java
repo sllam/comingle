@@ -256,7 +256,7 @@ public class TrackActivity extends FragmentActivity {
     		   switch(event.getAction()) {
     		   		case MotionEvent.ACTION_DOWN: 
     		   			if (!self.breaksOn()) {
-    		   			  dragracingRuntime.getRewriteMachine().add_sendtap(self.getLocation());
+    		   			  dragracingRuntime.getRewriteMachine().addSendTap();
     		   			}
     		   			// self.recordTimePressed();
     		   			return true;
@@ -282,7 +282,8 @@ public class TrackActivity extends FragmentActivity {
 				self.renderTrack(locs);
 			}    		
     	};
-    	dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.rendertrack, renderTrackAction);
+    	// dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.rendertrack, renderTrackAction);
+    	dragracingRuntime.getRewriteMachine().setRenderTrackActuator(renderTrackAction);
     	
     	ActuatorAction<Unit> releaseAction = new ActuatorAction<Unit>() {
 			@Override
@@ -290,7 +291,8 @@ public class TrackActivity extends FragmentActivity {
 				self.countDown(0);
 			}
     	};
-    	dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.release, releaseAction);
+    	// dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.release, releaseAction);
+    	dragracingRuntime.getRewriteMachine().setReleaseActuator(releaseAction);
     	
     	ActuatorAction<Integer> recvTapAction = new ActuatorAction<Integer>() {
 			@Override
@@ -298,7 +300,8 @@ public class TrackActivity extends FragmentActivity {
 				self.toggleCar(car_idx, true);
 			}
     	};
-    	dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.recvtap, recvTapAction);
+    	// dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.recvtap, recvTapAction);
+    	dragracingRuntime.getRewriteMachine().setRecvTapActuator(recvTapAction);
     	
     	ActuatorAction<Integer> hasAction = new ActuatorAction<Integer>() {
 			@Override
@@ -306,7 +309,8 @@ public class TrackActivity extends FragmentActivity {
 				self.addCar(car_idx, true);
 			}
     	};
-    	dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.has, hasAction);
+    	// dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.has, hasAction);
+    	dragracingRuntime.getRewriteMachine().setHasActuator(hasAction);
     	
     	ActuatorAction<Integer> decWinnerAction = new ActuatorAction<Integer>() {
 			@Override
@@ -314,8 +318,9 @@ public class TrackActivity extends FragmentActivity {
 					self.declareWinner(winner);
 			}
     	};
-    	dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.decwinner, decWinnerAction);
-  
+    	// dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.decwinner, decWinnerAction);
+    	dragracingRuntime.getRewriteMachine().setDecWinnerActuator(decWinnerAction);
+    	
     	dragracingRuntime.startRewriteMachine();
     	
 		if(dragracingRuntime.isRewriteReady() && dragracingRuntime.isOwner()) {
@@ -543,7 +548,7 @@ public class TrackActivity extends FragmentActivity {
         		track_canvas.drawRect(car.getSprite(), car.getPaint());
         	} else {
         		removeCar(car.getOwner());
-        		dragracingRuntime.getRewriteMachine().add_checkexit(getLocation(), car.getOwner());
+        		dragracingRuntime.getRewriteMachine().addExiting(car.getOwner());
         	}
         }
     
@@ -617,7 +622,7 @@ public class TrackActivity extends FragmentActivity {
 		this.gameStarted = true;
 		int myLoc = dragracingRuntime.getLocation();
 		LinkedList<Integer> locs = (LinkedList<Integer>) dragracingRuntime.getDirectory().getLocations();
-		dragracingRuntime.getRewriteMachine().add_initrace(myLoc, locs);
+		dragracingRuntime.getRewriteMachine().addInitRace(locs);
 		this.setMenuItemVisibility(R.id.action_go, true);
 		this.setMenuItemVisibility(R.id.action_start, false);
 	}
@@ -685,7 +690,7 @@ public class TrackActivity extends FragmentActivity {
 				return true;
 			case R.id.action_go:
 				if (myLoc == 0) {
-					dragracingRuntime.getRewriteMachine().add_go(myLoc);
+					dragracingRuntime.getRewriteMachine().addGo();
 				}
 				return true;
 			case R.id.action_restart:

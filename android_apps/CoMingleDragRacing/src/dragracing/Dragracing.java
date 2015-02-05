@@ -11,8 +11,12 @@ import comingle.rewrite.*;
 import comingle.hash.*;
 import comingle.tuple.*;
 import comingle.misc.*;
+import comingle.mset.*;
+import comingle.actuation.*;
 
 import comingle.lib.ExtLib;
+
+import comingle.dragracing.RacerLib;
 
 
 
@@ -32,19 +36,23 @@ import comingle.lib.ExtLib;
 ensem dragracing {
 
 	module comingle.lib.ExtLib import {
-		makeChain :: [A] -> ([(A,A)],A)
+		mset :: [A] -> {A}.
 	}
 
-	predicate initRace  :: [loc] -> trigger.
-	predicate go        :: trigger.
-	predicate sendTap   :: trigger.
-	predicate checkExit :: loc  -> trigger.
+	module comingle.dragracing.RacerLib import {
+		makeChain :: (A,[A]) -> ({(A,A)},A).
+	}
+
+	predicate initRace :: [loc] -> trigger.
+	predicate go       :: trigger.
+	predicate sendTap  :: trigger.
+	predicate exiting  :: loc  -> trigger.
 
 	predicate at   :: loc -> fact.
 	predicate rmAt :: loc -> fact.
 	predicate next :: loc -> fact.
 	predicate last :: fact.
-	predicate all  :: [loc] -> fact.
+	predicate all  :: {loc} -> fact.
 
 	predicate renderTrack :: [loc] -> actuator.
 	predicate release   :: actuator.
@@ -52,11 +60,11 @@ ensem dragracing {
 	predicate has       :: loc -> actuator.
 	predicate decWinner :: loc -> actuator.
 
-	rule start :: [X]initRace(Ls) 
+	rule start :: [I]initRace(Ls) 
                          --o { [A]next(B) | (A,B) <- Cs }, [E]last(),
-                             { [L]all(Ls), [L]at(X), [L]renderTrack(Ls) | L <- Ls },
-                             { [X]has(L) | L <- Ls }
-                             where (Cs,E) = makeChain(Ls).
+                             { [I]has(P), [P]all(Ps), [P]at(I), [P]renderTrack(Ls) | P <- Ps }
+                             where (Cs,E) = makeChain(I,Ls),
+                                   Ps = mset(Ls).
 
 	rule go :: [X]all(Ls) \ [X]go() 
                          --o { [L]release() | L <- Ls }. 
@@ -66,11 +74,11 @@ ensem dragracing {
 	rule tap :: [X]at(Y) \ [X]sendTap() 
                          --o [Y]recvTap(X).
 
-	rule trans :: [X]next(Z) \ [X]checkExit(Y)
+	rule trans :: [X]next(Z) \ [X]exiting(Y)
                          --o [Z]has(Y), [Y]rmAt(X), [Y]at(Z).
 	
-	rule win :: [X]last() \ [X]all(Ls), [X]checkExit(Y)
-                         --o { [L]decWinner(Y) | L <- Ls }.
+	rule win :: [X]last() \ [X]all(Ps), [X]exiting(Y)
+                         --o { [P]decWinner(Y) | P <- Ps }.
 
 }
 **/
@@ -164,10 +172,10 @@ public class Dragracing extends RewriteMachine {
 	
 	}
 	
-	public class CheckExit extends DragracingFact {
+	public class Exiting extends DragracingFact {
 		public int arg1;
 	
-		public CheckExit(int l, int a1) { super(l); arg1=a1; }
+		public Exiting(int l, int a1) { super(l); arg1=a1; }
 	
 		public int fact_idx() { return 3; }
 	
@@ -183,7 +191,7 @@ public class Dragracing extends RewriteMachine {
 			return new SerializedFact(loc, 3, arguments);
 		}
 	
-		public String toString() { return String.format("[%s]CheckExit(%s)",loc,arg1); }
+		public String toString() { return String.format("[%s]Exiting(%s)",loc,arg1); }
 	
 	}
 	
@@ -280,9 +288,9 @@ public class Dragracing extends RewriteMachine {
 	}
 	
 	public class All extends DragracingFact {
-		public LinkedList<Integer>  arg1;
+		public SimpMultiset<Integer>  arg1;
 	
-		public All(int l, LinkedList<Integer>  a1) { super(l); arg1=a1; }
+		public All(int l, SimpMultiset<Integer>  a1) { super(l); arg1=a1; }
 	
 		public int fact_idx() { return 8; }
 	
@@ -493,7 +501,7 @@ public class Dragracing extends RewriteMachine {
 	protected static int index0SendTap(int loc) {
 		return Hash.hash(loc);
 	}
-	protected static int index0CheckExit(int loc) {
+	protected static int index0Exiting(int loc) {
 		return Hash.hash(loc);
 	}
 	protected static int index0At(int loc, int arg1) {
@@ -518,7 +526,7 @@ public class Dragracing extends RewriteMachine {
 	protected static final int initrace_fact_idx = 0;
 	protected static final int go_fact_idx = 1;
 	protected static final int sendtap_fact_idx = 2;
-	protected static final int checkexit_fact_idx = 3;
+	protected static final int exiting_fact_idx = 3;
 	protected static final int at_fact_idx = 4;
 	protected static final int rmat_fact_idx = 5;
 	protected static final int next_fact_idx = 6;
@@ -540,8 +548,8 @@ public class Dragracing extends RewriteMachine {
 	protected ListStore<Go> go_store_1;
 	protected MultiMapStore<SendTap> sendtap_store_0;
 	protected ListStore<SendTap> sendtap_store_1;
-	protected MultiMapStore<CheckExit> checkexit_store_0;
-	protected ListStore<CheckExit> checkexit_store_1;
+	protected MultiMapStore<Exiting> exiting_store_0;
+	protected ListStore<Exiting> exiting_store_1;
 	protected MultiMapStore<At> at_store_0;
 	protected MultiMapStore<At> at_store_1;
 	protected ListStore<At> at_store_2;
@@ -596,13 +604,13 @@ public class Dragracing extends RewriteMachine {
 		sendtap_store_1.set_name("SendTap Store");
 		// set_store_component( sendtap_store_1 );
 		
-		checkexit_store_0 = new MultiMapStore<CheckExit>();
-		checkexit_store_0.set_name("CheckExit Store");
-		// set_store_component( checkexit_store_0 );
+		exiting_store_0 = new MultiMapStore<Exiting>();
+		exiting_store_0.set_name("Exiting Store");
+		// set_store_component( exiting_store_0 );
 		
-		checkexit_store_1 = new ListStore<CheckExit>();
-		checkexit_store_1.set_name("CheckExit Store");
-		// set_store_component( checkexit_store_1 );
+		exiting_store_1 = new ListStore<Exiting>();
+		exiting_store_1.set_name("Exiting Store");
+		// set_store_component( exiting_store_1 );
 		
 		at_store_0 = new MultiMapStore<At>();
 		at_store_0.set_name("At Store");
@@ -652,7 +660,7 @@ public class Dragracing extends RewriteMachine {
 		set_store_component( initrace_store_0 );
 		set_store_component( go_store_1 );
 		set_store_component( sendtap_store_1 );
-		set_store_component( checkexit_store_1 );
+		set_store_component( exiting_store_1 );
 		set_store_component( at_store_2 );
 		set_store_component( rmat_store_1 );
 		set_store_component( next_store_1 );
@@ -690,7 +698,7 @@ public class Dragracing extends RewriteMachine {
 			
 			case 2: return new SendTap(fact.loc);
 			
-			case 3: return new CheckExit(fact.loc,(Integer) args[0]);
+			case 3: return new Exiting(fact.loc,(Integer) args[0]);
 			
 			case 4: return new At(fact.loc,(Integer) args[0]);
 			
@@ -700,7 +708,7 @@ public class Dragracing extends RewriteMachine {
 			
 			case 7: return new Last(fact.loc);
 			
-			case 8: return new All(fact.loc,(LinkedList<Integer> ) args[0]);
+			case 8: return new All(fact.loc,(SimpMultiset<Integer> ) args[0]);
 			
 			case 9: return new RenderTrack(fact.loc,(LinkedList<Integer> ) args[0]);
 			
@@ -748,9 +756,9 @@ public class Dragracing extends RewriteMachine {
 		sendtap_store_1.add( sendtap );
 	} 				
 	
-	protected void store(CheckExit checkexit) {
-		checkexit_store_0.add( checkexit, index0CheckExit(checkexit.loc) );
-		checkexit_store_1.add( checkexit );
+	protected void store(Exiting exiting) {
+		exiting_store_0.add( exiting, index0Exiting(exiting.loc) );
+		exiting_store_1.add( exiting );
 	} 				
 	
 	protected void store(At at) {
@@ -829,9 +837,9 @@ public class Dragracing extends RewriteMachine {
 		}
 	}
 	
-	public void add_checkexit(int loc,int arg1) {
+	public void add_exiting(int loc,int arg1) {
 		if (isSolo || location == loc) {
-			intro( new CheckExit(loc,arg1) );
+			intro( new Exiting(loc,arg1) );
 		}
 	}
 	
@@ -859,7 +867,7 @@ public class Dragracing extends RewriteMachine {
 		}
 	}
 	
-	public void add_all(int loc,LinkedList<Integer>  arg1) {
+	public void add_all(int loc,SimpMultiset<Integer>  arg1) {
 		if (isSolo || location == loc) {
 			intro( new All(loc,arg1) );
 		}
@@ -928,8 +936,8 @@ public class Dragracing extends RewriteMachine {
 		notify_new_goals();
 	}
 	
-	protected void intro(CheckExit checkexit) {
-		goals.add( checkexit );
+	protected void intro(Exiting exiting) {
+		goals.add( exiting );
 		notify_new_goals();
 	}
 	
@@ -1025,11 +1033,11 @@ public class Dragracing extends RewriteMachine {
 		}
 	}
 	
-	protected void send(CheckExit checkexit) {
-		if(location == checkexit.get_loc()) {
-			intro(checkexit);
+	protected void send(Exiting exiting) {
+		if(location == exiting.get_loc()) {
+			intro(exiting);
 		} else {
-			send_buffers.add(checkexit);
+			send_buffers.add(exiting);
 		}
 	}
 	
@@ -1139,44 +1147,105 @@ public class Dragracing extends RewriteMachine {
 	
 	
 
+	public void addInitRace(LinkedList<Integer>  arg1) {
+		intro( new InitRace(location,arg1) );
+	}
+	
+	public void addGo() {
+		intro( new Go(location) );
+	}
+	
+	public void addSendTap() {
+		intro( new SendTap(location) );
+	}
+	
+	public void addExiting(int arg1) {
+		intro( new Exiting(location,arg1) );
+	}
+	
+
+	public void setRenderTrackActuator(ActuatorAction<LinkedList<Integer> > action) {
+		setActuator("rendertrack", action);
+	}
+	
+	public void setReleaseActuator(ActuatorAction<Unit> action) {
+		setActuator("release", action);
+	}
+	
+	public void setRecvTapActuator(ActuatorAction<Integer> action) {
+		setActuator("recvtap", action);
+	}
+	
+	public void setHasActuator(ActuatorAction<Integer> action) {
+		setActuator("has", action);
+	}
+	
+	public void setDecWinnerActuator(ActuatorAction<Integer> action) {
+		setActuator("decwinner", action);
+	}
+	
+	public void setDelayActuator(ActuatorAction<Integer> action) {
+		setActuator("delay", action);
+	}
+	
+	public void setBeepActuator(ActuatorAction<String> action) {
+		setActuator("beep", action);
+	}
+	
+	public void setToastActuator(ActuatorAction<String> action) {
+		setActuator("toast", action);
+	}
+	
+
+	
+
+	public ConcListStore[] getLinearStores() {
+		ConcListStore[] stores = new ConcListStore[0];
+		
+		return stores;
+	}
 	
 
 	/*
 	**** 0 Join Ordering of Rule start ****
-	Rule Head Variables: X, Ls
+	Rule Head Variables: I, Ls
 	Rule Head Compre Binders: 
-	Active #H0 [X]initRace(Ls)
+	Active #H0 [I]initRace(Ls)
 	DeleteHead #H0
-	LetBind (Cs,E) makeChain(Ls)
+	LetBind (Cs,E) makeChain((I,Ls))
+	LetBind Ps mset(Ls)
 	IntroAtom Remote NoPrior Mono [E]last()
 	IntroCompre Remote NoPrior Mono A,B Cs [A]next(B)
-	IntroCompre Remote NoPrior Mono L Ls [L]all(Ls)
-	IntroCompre Local NoPrior Mono L Ls [X]has(L)
+	IntroCompre Local NoPrior Mono P Ps [I]has(P)
 	*/
 	protected boolean execute_initrace_join_ordering_1(InitRace act) {
 		
 		int a;
+		SimpMultiset<Integer>  ps;
 		int b;
 		int e;
-		int l;
+		int i;
+		int p;
 		LinkedList<Integer>  ls;
-		LinkedList<Tuple2<Integer,Integer> >  cs;
-		int x;
-		// Join Task: Active #H0 [X]initRace(Ls)
-		x = act.loc;
+		SimpMultiset<Tuple2<Integer,Integer> >  cs;
+		// Join Task: Active #H0 [I]initRace(Ls)
+		i = act.loc;
 		ls = act.arg1;
 		// Join Task: DeleteHead #H0
 		// H0 is active and monotone, no delete required
-		// Join Task: LetBind (Cs,E) makeChain(Ls)
-		Tuple2<LinkedList<Tuple2<Integer,Integer> > ,Integer>  tup0;
-		tup0 = ExtLib.makeChain(ls);
+		// Join Task: LetBind (Cs,E) makeChain((I,Ls))
+		Tuple2<SimpMultiset<Tuple2<Integer,Integer> > ,Integer>  tup0;
+		tup0 = RacerLib.makeChain(i,ls);
 		cs = tup0.t1;
 		e = tup0.t2;
+		;
+		// Join Task: LetBind Ps mset(Ls)
+		ps = ExtLib.mset(ls);
 		;
 		// Join Task: IntroAtom Remote NoPrior Mono [E]last()
 		send( new Last(e) ); 
 		// Join Task: IntroCompre Remote NoPrior Mono A,B Cs [A]next(B)
-		LinkedList<Tuple2<Integer,Integer> >  comp_0 = cs;
+		SimpMultiset<Tuple2<Integer,Integer> >  comp_0 = cs;
 		for(int idx=0; idx<comp_0.size(); idx++) {
 			Tuple2<Integer,Integer>  tup1;
 			tup1 = comp_0.get(idx);
@@ -1184,19 +1253,14 @@ public class Dragracing extends RewriteMachine {
 			b = tup1.t2;
 			send( new Next(a,b) ); 
 		}
-		// Join Task: IntroCompre Remote NoPrior Mono L Ls [L]all(Ls)
-		LinkedList<Integer>  comp_1 = ls;
+		// Join Task: IntroCompre Local NoPrior Mono P Ps [I]has(P)
+		SimpMultiset<Integer>  comp_1 = ps;
 		for(int idx=0; idx<comp_1.size(); idx++) {
-			l = comp_1.get(idx);
-			send( new All(l,ls) ); 
-			send( new At(l,x) ); 
-			send( new RenderTrack(l,ls) ); 
-		}
-		// Join Task: IntroCompre Local NoPrior Mono L Ls [X]has(L)
-		LinkedList<Integer>  comp_2 = ls;
-		for(int idx=0; idx<comp_2.size(); idx++) {
-			l = comp_2.get(idx);
-			intro( new Has(x,l) );
+			p = comp_1.get(idx);
+			intro( new Has(i,p) );
+			send( new All(p,ps) ); 
+			send( new At(p,i) ); 
+			send( new RenderTrack(p,ls) ); 
 		}
 		start_rule_count++;
 		return false;
@@ -1215,7 +1279,7 @@ public class Dragracing extends RewriteMachine {
 	protected boolean execute_go_join_ordering_1(Go act) {
 		
 		int x;
-		LinkedList<Integer>  ls;
+		SimpMultiset<Integer>  ls;
 		int l;
 		// Join Task: Active #H0 [X]go()
 		x = act.loc;
@@ -1230,7 +1294,7 @@ public class Dragracing extends RewriteMachine {
 				// Join Task: DeleteHead #H0
 				// H0 is active and monotone, no delete required
 				// Join Task: IntroCompre Remote NoPrior Mono L Ls [L]release()
-				LinkedList<Integer>  comp_0 = ls;
+				SimpMultiset<Integer>  comp_0 = ls;
 				for(int idx=0; idx<comp_0.size(); idx++) {
 					l = comp_0.get(idx);
 					send( new Release(l) ); 
@@ -1282,19 +1346,19 @@ public class Dragracing extends RewriteMachine {
 	**** 0 Join Ordering of Rule trans ****
 	Rule Head Variables: Y, X, Z
 	Rule Head Compre Binders: 
-	Active #H0 [X]checkExit(Y)
+	Active #H0 [X]exiting(Y)
 	LookupAtom #H1 6:0:hash<[+]next(-)|.>  X [X]next(Z)
 	DeleteHead #H0
 	IntroAtom Remote NoPrior Mono [Z]has(Y)
 	IntroAtom Remote NoPrior Mono [Y]rmAt(X)
 	IntroAtom Remote NoPrior Mono [Y]at(Z)
 	*/
-	protected boolean execute_checkexit_join_ordering_1(CheckExit act) {
+	protected boolean execute_exiting_join_ordering_1(Exiting act) {
 		
 		int y;
 		int x;
 		int z;
-		// Join Task: Active #H0 [X]checkExit(Y)
+		// Join Task: Active #H0 [X]exiting(Y)
 		x = act.loc;
 		y = act.arg1;
 		// Join Task: LookupAtom #H1 6:0:hash<[+]next(-)|.>  X [X]next(Z)
@@ -1323,22 +1387,22 @@ public class Dragracing extends RewriteMachine {
 	
 	/*
 	**** 1 Join Ordering of Rule win ****
-	Rule Head Variables: Y, X, Ls
+	Rule Head Variables: Y, X, Ps
 	Rule Head Compre Binders: 
-	Active #H0 [X]checkExit(Y)
+	Active #H0 [X]exiting(Y)
 	LookupAtom #H1 7:0:hash<[+]last()|.>  X [X]last()
-	LookupAtom #H2 8:0:hash<[+]all(-)|.>  X [X]all(Ls)
+	LookupAtom #H2 8:0:hash<[+]all(-)|.>  X [X]all(Ps)
 	DeleteHead #H0
 	DeleteHead #H2
-	IntroCompre Remote NoPrior Mono L Ls [L]decWinner(Y)
+	IntroCompre Remote NoPrior Mono P Ps [P]decWinner(Y)
 	*/
-	protected boolean execute_checkexit_join_ordering_2(CheckExit act) {
+	protected boolean execute_exiting_join_ordering_2(Exiting act) {
 		
 		int y;
 		int x;
-		LinkedList<Integer>  ls;
-		int l;
-		// Join Task: Active #H0 [X]checkExit(Y)
+		int p;
+		SimpMultiset<Integer>  ps;
+		// Join Task: Active #H0 [X]exiting(Y)
 		x = act.loc;
 		y = act.arg1;
 		// Join Task: LookupAtom #H1 7:0:hash<[+]last()|.>  X [X]last()
@@ -1348,23 +1412,23 @@ public class Dragracing extends RewriteMachine {
 			int x1;
 			x1 = cand_1.loc;
 			if (true) {
-				// Join Task: LookupAtom #H2 8:0:hash<[+]all(-)|.>  X [X]all(Ls)
+				// Join Task: LookupAtom #H2 8:0:hash<[+]all(-)|.>  X [X]all(Ps)
 				StoreIter<All> candidates_2 = all_store_0.lookup_candidates(index0All(x));
 				All cand_2 = candidates_2.get_next_alive();
 				while(cand_2 != null) {
 					int x2;
 					x2 = cand_2.loc;
-					ls = cand_2.arg1;
+					ps = cand_2.arg1;
 					if (true) {
 						// Join Task: DeleteHead #H0
 						// H0 is active and monotone, no delete required
 						// Join Task: DeleteHead #H2
 						all_store_0.remove( cand_2 );
-						// Join Task: IntroCompre Remote NoPrior Mono L Ls [L]decWinner(Y)
-						LinkedList<Integer>  comp_0 = ls;
+						// Join Task: IntroCompre Remote NoPrior Mono P Ps [P]decWinner(Y)
+						SimpMultiset<Integer>  comp_0 = ps;
 						for(int idx=0; idx<comp_0.size(); idx++) {
-							l = comp_0.get(idx);
-							send( new DecWinner(l,y) ); 
+							p = comp_0.get(idx);
+							send( new DecWinner(p,y) ); 
 						}
 						win_rule_count++;
 						return false;
@@ -1492,7 +1556,7 @@ public class Dragracing extends RewriteMachine {
 	Rule Head Variables: Y, X, Z
 	Rule Head Compre Binders: 
 	Active #H0 [X]next(Z)
-	LookupAtom #H1 3:0:hash<[+]checkExit(-)|.>  X [X]checkExit(Y)
+	LookupAtom #H1 3:0:hash<[+]exiting(-)|.>  X [X]exiting(Y)
 	DeleteHead #H1
 	IntroAtom Remote NoPrior Mono [Z]has(Y)
 	IntroAtom Remote NoPrior Mono [Y]rmAt(X)
@@ -1506,16 +1570,16 @@ public class Dragracing extends RewriteMachine {
 		// Join Task: Active #H0 [X]next(Z)
 		x = act.loc;
 		z = act.arg1;
-		// Join Task: LookupAtom #H1 3:0:hash<[+]checkExit(-)|.>  X [X]checkExit(Y)
-		StoreIter<CheckExit> candidates_1 = checkexit_store_0.lookup_candidates(index0CheckExit(x));
-		CheckExit cand_1 = candidates_1.get_next_alive();
+		// Join Task: LookupAtom #H1 3:0:hash<[+]exiting(-)|.>  X [X]exiting(Y)
+		StoreIter<Exiting> candidates_1 = exiting_store_0.lookup_candidates(index0Exiting(x));
+		Exiting cand_1 = candidates_1.get_next_alive();
 		while(cand_1 != null) {
 			int x1;
 			x1 = cand_1.loc;
 			y = cand_1.arg1;
 			if (true) {
 				// Join Task: DeleteHead #H1
-				checkexit_store_0.remove( cand_1 );
+				exiting_store_0.remove( cand_1 );
 				// Join Task: IntroAtom Remote NoPrior Mono [Z]has(Y)
 				send( new Has(z,y) ); 
 				// Join Task: IntroAtom Remote NoPrior Mono [Y]rmAt(X)
@@ -1531,34 +1595,34 @@ public class Dragracing extends RewriteMachine {
 	
 	/*
 	**** 2 Join Ordering of Rule win ****
-	Rule Head Variables: Y, X, Ls
+	Rule Head Variables: Y, X, Ps
 	Rule Head Compre Binders: 
 	Active #H0 [X]last()
-	LookupAtom #H1 8:0:hash<[+]all(-)|.>  X [X]all(Ls)
-	LookupAtom #H2 3:0:hash<[+]checkExit(-)|.>  X [X]checkExit(Y)
+	LookupAtom #H1 8:0:hash<[+]all(-)|.>  X [X]all(Ps)
+	LookupAtom #H2 3:0:hash<[+]exiting(-)|.>  X [X]exiting(Y)
 	DeleteHead #H1
 	DeleteHead #H2
-	IntroCompre Remote NoPrior Mono L Ls [L]decWinner(Y)
+	IntroCompre Remote NoPrior Mono P Ps [P]decWinner(Y)
 	*/
 	protected boolean execute_last_join_ordering_1(Last act) {
 		
 		int y;
 		int x;
-		LinkedList<Integer>  ls;
-		int l;
+		int p;
+		SimpMultiset<Integer>  ps;
 		// Join Task: Active #H0 [X]last()
 		x = act.loc;
-		// Join Task: LookupAtom #H1 8:0:hash<[+]all(-)|.>  X [X]all(Ls)
+		// Join Task: LookupAtom #H1 8:0:hash<[+]all(-)|.>  X [X]all(Ps)
 		StoreIter<All> candidates_1 = all_store_0.lookup_candidates(index0All(x));
 		All cand_1 = candidates_1.get_next_alive();
 		while(cand_1 != null) {
 			int x1;
 			x1 = cand_1.loc;
-			ls = cand_1.arg1;
+			ps = cand_1.arg1;
 			if (true) {
-				// Join Task: LookupAtom #H2 3:0:hash<[+]checkExit(-)|.>  X [X]checkExit(Y)
-				StoreIter<CheckExit> candidates_2 = checkexit_store_0.lookup_candidates(index0CheckExit(x));
-				CheckExit cand_2 = candidates_2.get_next_alive();
+				// Join Task: LookupAtom #H2 3:0:hash<[+]exiting(-)|.>  X [X]exiting(Y)
+				StoreIter<Exiting> candidates_2 = exiting_store_0.lookup_candidates(index0Exiting(x));
+				Exiting cand_2 = candidates_2.get_next_alive();
 				while(cand_2 != null) {
 					int x2;
 					x2 = cand_2.loc;
@@ -1567,12 +1631,12 @@ public class Dragracing extends RewriteMachine {
 						// Join Task: DeleteHead #H1
 						all_store_0.remove( cand_1 );
 						// Join Task: DeleteHead #H2
-						checkexit_store_0.remove( cand_2 );
-						// Join Task: IntroCompre Remote NoPrior Mono L Ls [L]decWinner(Y)
-						LinkedList<Integer>  comp_0 = ls;
+						exiting_store_0.remove( cand_2 );
+						// Join Task: IntroCompre Remote NoPrior Mono P Ps [P]decWinner(Y)
+						SimpMultiset<Integer>  comp_0 = ps;
 						for(int idx=0; idx<comp_0.size(); idx++) {
-							l = comp_0.get(idx);
-							send( new DecWinner(l,y) ); 
+							p = comp_0.get(idx);
+							send( new DecWinner(p,y) ); 
 						}
 						win_rule_count++;
 					}
@@ -1596,7 +1660,7 @@ public class Dragracing extends RewriteMachine {
 	protected boolean execute_all_join_ordering_1(All act) {
 		
 		int x;
-		LinkedList<Integer>  ls;
+		SimpMultiset<Integer>  ls;
 		int l;
 		// Join Task: Active #H0 [X]all(Ls)
 		x = act.loc;
@@ -1611,7 +1675,7 @@ public class Dragracing extends RewriteMachine {
 				// Join Task: DeleteHead #H1
 				go_store_0.remove( cand_1 );
 				// Join Task: IntroCompre Remote NoPrior Mono L Ls [L]release()
-				LinkedList<Integer>  comp_0 = ls;
+				SimpMultiset<Integer>  comp_0 = ls;
 				for(int idx=0; idx<comp_0.size(); idx++) {
 					l = comp_0.get(idx);
 					send( new Release(l) ); 
@@ -1625,24 +1689,24 @@ public class Dragracing extends RewriteMachine {
 	
 	/*
 	**** 0 Join Ordering of Rule win ****
-	Rule Head Variables: Y, X, Ls
+	Rule Head Variables: Y, X, Ps
 	Rule Head Compre Binders: 
-	Active #H0 [X]all(Ls)
+	Active #H0 [X]all(Ps)
 	LookupAtom #H1 7:0:hash<[+]last()|.>  X [X]last()
-	LookupAtom #H2 3:0:hash<[+]checkExit(-)|.>  X [X]checkExit(Y)
+	LookupAtom #H2 3:0:hash<[+]exiting(-)|.>  X [X]exiting(Y)
 	DeleteHead #H0
 	DeleteHead #H2
-	IntroCompre Remote NoPrior Mono L Ls [L]decWinner(Y)
+	IntroCompre Remote NoPrior Mono P Ps [P]decWinner(Y)
 	*/
 	protected boolean execute_all_join_ordering_2(All act) {
 		
 		int y;
 		int x;
-		LinkedList<Integer>  ls;
-		int l;
-		// Join Task: Active #H0 [X]all(Ls)
+		int p;
+		SimpMultiset<Integer>  ps;
+		// Join Task: Active #H0 [X]all(Ps)
 		x = act.loc;
-		ls = act.arg1;
+		ps = act.arg1;
 		// Join Task: LookupAtom #H1 7:0:hash<[+]last()|.>  X [X]last()
 		StoreIter<Last> candidates_1 = last_store_0.lookup_candidates(index0Last(x));
 		Last cand_1 = candidates_1.get_next();
@@ -1650,9 +1714,9 @@ public class Dragracing extends RewriteMachine {
 			int x1;
 			x1 = cand_1.loc;
 			if (true) {
-				// Join Task: LookupAtom #H2 3:0:hash<[+]checkExit(-)|.>  X [X]checkExit(Y)
-				StoreIter<CheckExit> candidates_2 = checkexit_store_0.lookup_candidates(index0CheckExit(x));
-				CheckExit cand_2 = candidates_2.get_next_alive();
+				// Join Task: LookupAtom #H2 3:0:hash<[+]exiting(-)|.>  X [X]exiting(Y)
+				StoreIter<Exiting> candidates_2 = exiting_store_0.lookup_candidates(index0Exiting(x));
+				Exiting cand_2 = candidates_2.get_next_alive();
 				while(cand_2 != null) {
 					int x2;
 					x2 = cand_2.loc;
@@ -1661,12 +1725,12 @@ public class Dragracing extends RewriteMachine {
 						// Join Task: DeleteHead #H0
 						// H0 is active and monotone, no delete required
 						// Join Task: DeleteHead #H2
-						checkexit_store_0.remove( cand_2 );
-						// Join Task: IntroCompre Remote NoPrior Mono L Ls [L]decWinner(Y)
-						LinkedList<Integer>  comp_0 = ls;
+						exiting_store_0.remove( cand_2 );
+						// Join Task: IntroCompre Remote NoPrior Mono P Ps [P]decWinner(Y)
+						SimpMultiset<Integer>  comp_0 = ps;
 						for(int idx=0; idx<comp_0.size(); idx++) {
-							l = comp_0.get(idx);
-							send( new DecWinner(l,y) ); 
+							p = comp_0.get(idx);
+							send( new DecWinner(p,y) ); 
 						}
 						win_rule_count++;
 						return false;
@@ -1698,10 +1762,10 @@ public class Dragracing extends RewriteMachine {
 		}
 	}
 	
-	protected void execute(CheckExit checkexit) {
-		if( execute_checkexit_join_ordering_1(checkexit) ) {
-			if( execute_checkexit_join_ordering_2(checkexit) ) {
-				store( checkexit );
+	protected void execute(Exiting exiting) {
+		if( execute_exiting_join_ordering_1(exiting) ) {
+			if( execute_exiting_join_ordering_2(exiting) ) {
+				store( exiting );
 			}
 		}
 	}
