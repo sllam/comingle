@@ -57,6 +57,8 @@ import comingle.rewrite.*;
 import comingle.hash.*;
 import comingle.tuple.*;
 import comingle.misc.*;
+import comingle.mset.*;
+import comingle.actuation.*;
 import comingle.logging.CoLogger;
 ''')
 
@@ -73,6 +75,7 @@ import comingle.hash.*;
 import comingle.tuple.*;
 import comingle.misc.*;
 import comingle.mset.*;
+import comingle.actuation.*;
 ''')
 
 GENERATED_MESSAGE = template('''
@@ -581,9 +584,40 @@ class JavaCodeGenerator:
 
 		package_code = "package %s;" % mk_package_name( prog.ensem_name )
 
-		actuation_member_codes = []
+		actuator_name_codes = []
+		actuator_member_codes = []
 		for fact_info in self.get_fact_info(role=ast.ACTUATOR_FACT):
-			actuation_member_codes.append( "public static final String %s = \"%s\";" % (fact_info['fact_name'].lower(),fact_info['fact_name'].lower()) )
+			actuator_name_codes.append( "public static final String %s = \"%s\";" % (fact_info['fact_name'].lower(),fact_info['fact_name'].lower()) )
+
+			actuator_member_code = template('''
+				public void set{| actu_name |}Actuator(ActuatorAction<{| ','.join(arg_types) |}> action) {
+					setActuator(\"{| fact_name |}\", action);
+				}
+			''')
+			if len(fact_info['boxed_type_codes']) == 1:
+				arg_types = fact_info['boxed_type_codes']
+			elif len(fact_info['boxed_type_codes']) > 1:
+				tsize = len(fact_info['boxed_type_codes'])
+				arg_types = [ "Tuple%s<%s>" % (tsize,','.join(fact_info['boxed_type_codes'])) ]
+			else:
+				arg_types = ['Unit']
+			actuator_member_codes.append(compile_template(actuator_member_code, actu_name=fact_info['fact_name'], fact_name=fact_info['fact_name'].lower()
+                                                                     ,arg_types=arg_types ) )
+
+		trigger_member_codes = []
+		for fact_info in self.get_fact_info(role=ast.TRIGGER_FACT):
+
+			arg_decs  = map(lambda (t,n): "%s %s" % (t,n) ,zip(fact_info['type_codes'],fact_info['arg_names']))
+			arg_calls = fact_info['arg_names']
+
+			trigger_member_code = template('''
+				public void add{| fact_name |}({| ','.join(arg_decs) |}) {
+					intro( new {| fact_name |}(location{| join_ext(',', arg_calls, prefix=',') |}) );
+				}
+			''')
+			trigger_member_codes.append( compile_template(trigger_member_code, fact_name=fact_info['fact_name']
+                                                                     ,arg_decs=arg_decs, arg_calls=arg_calls ))
+
 
 		exported_store_codes = map(lambda (fact_idx,exported_store): self.generate_exported_store_member(fact_idx,exported_store) 
                                           ,self.exported_stores)
@@ -600,7 +634,7 @@ class JavaCodeGenerator:
 			public class {| ensem_name |} extends RewriteMachine {
 
 				public class Actuations {
-					{| '\\n'.join( actuation_member_codes ) |}
+					{| '\\n'.join( actuator_name_codes ) |}
 				}
 
 				abstract class {| ef_name |} extends Fact {
@@ -628,6 +662,10 @@ class JavaCodeGenerator:
 
 				{| fact_member_codes |}
 
+				{| '\\n'.join( trigger_member_codes ) |}
+
+				{| '\\n'.join( actuator_member_codes ) |}
+
 				{| '\\n'.join( exported_store_codes ) |}
 
 				{| exported_linear_stores_code |}
@@ -646,7 +684,8 @@ class JavaCodeGenerator:
                                        , rule_app_counter_decs=rule_app_counter_decs, store_dec_codes=store_dec_codes, constructor_codes=constructor_codes
                                        , boiler_plate_codes=BOILER_PLATE_CODES, fact_member_codes=fact_member_codes
                                        , join_exec_member_codes=join_exec_member_codes, fact_exec_member_codes=fact_exec_member_codes
-                                       , exec_codes=exec_codes, actuation_member_codes=actuation_member_codes, exported_store_codes=exported_store_codes
+                                       , exec_codes=exec_codes, actuator_name_codes=actuator_name_codes, exported_store_codes=exported_store_codes
+                                       , trigger_member_codes=trigger_member_codes, actuator_member_codes=actuator_member_codes
                                        , exported_linear_stores_code=exported_linear_stores_code, generated_message=GENERATED_MESSAGE,source_codes=source_codes)
 
 	def generate_fact_decs(self, ensem_name, fact_idx):
