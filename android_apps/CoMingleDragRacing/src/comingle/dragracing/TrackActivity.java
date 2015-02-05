@@ -12,6 +12,7 @@ import comingle.wifidirect.runtime.WifiDirectComingleRuntime;
 
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -19,6 +20,7 @@ import android.view.MotionEvent;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.DialogInterface.OnClickListener;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -152,10 +154,13 @@ public class TrackActivity extends FragmentActivity {
 	private static final int DR_ADMIN_PORT  = 8181;
 	private static final int DR_FACT_PORT   = 8819;
 	
+	private static final int RET_WIFI_SETTINGS = 203;
+	
 	private WifiDirectComingleRuntime<Dragracing> dragracingRuntime;
 	
 	private boolean gameStarted = false;
-	
+	private boolean postedWifiComplaint = false;
+ 	
 	private Canvas track_canvas;
 	private LinkedList<Car> cars;
 	private LinearLayout track;
@@ -200,14 +205,14 @@ public class TrackActivity extends FragmentActivity {
 		dragracingRuntime.getDirectory().addNetworkStatusChangedListener(new NetworkStatusChangedListener() {
 			@Override
 			public void doWifiAdapterStatusChangedAction(boolean enabled) {
-				if(!enabled) {
-					self.postAlert("Wifi Adapter is Disabled", "You must enable your wifi adapter to use this app!");
-				}
+				/*if(!enabled && !postedWifiComplaint) {
+					postConfigWifiConnection("Please form a wifi-direct group!");
+				}*/
 			}
 			@Override
 			public void doWifiConnectionStatusChangedAction(boolean connected) {
-				if(dragracingRuntime.getDirectory().wifiEnabled() && !dragracingRuntime.getDirectory().wifiConnected()) {
-					self.postAlert("No WifiP2p Network Found", "You must connect to a WifiP2p network to use this app!");
+				if(!postedWifiComplaint && dragracingRuntime.getDirectory().wifiEnabled() && !dragracingRuntime.getDirectory().wifiConnected()) {
+					postConfigWifiConnection("Please form a wifi-direct group!");
 				}
 			}
 		});
@@ -244,19 +249,10 @@ public class TrackActivity extends FragmentActivity {
 		track = (LinearLayout) findViewById(R.id.track);
 		track.setBackground(new BitmapDrawable(getResources(), bg));   
        
-		refreshTrackTask = new TimerTask() {
-    	   @Override
-    	   public void run() {
-    		   self.refreshTrack();
-    	   }
-		};
-		
-       
 		track.setOnTouchListener(new View.OnTouchListener() {
 		
     	   @Override
     	   public boolean onTouch(View v, MotionEvent event) {
-    		   // TODO Auto-generated method stub
     		   switch(event.getAction()) {
     		   		case MotionEvent.ACTION_DOWN: 
     		   			if (!self.breaksOn()) {
@@ -321,6 +317,10 @@ public class TrackActivity extends FragmentActivity {
     	dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.decwinner, decWinnerAction);
   
     	dragracingRuntime.startRewriteMachine();
+    	
+		if(dragracingRuntime.isRewriteReady() && dragracingRuntime.isOwner()) {
+			this.setMenuItemVisibility(R.id.action_start, true);
+		}
     }
     
     public int getLocation() { return dragracingRuntime.getLocation(); }
@@ -352,6 +352,13 @@ public class TrackActivity extends FragmentActivity {
     	if (!timerStarted) {
     		prev_refresh_time = (int) System.currentTimeMillis();
     		timer = new Timer();
+    		final TrackActivity self = this;
+    		refreshTrackTask = new TimerTask() {
+    	    	   @Override
+    	    	   public void run() {
+    	    		   self.refreshTrack();
+    	    	   }
+    			};    		
     		timer.schedule(refreshTrackTask, 0, FPS_RATE);
     		timerStarted = true;
     	}
@@ -593,6 +600,7 @@ public class TrackActivity extends FragmentActivity {
     }
     
     private void initOpponentsInfo(List<NodeInfo> new_nodes) {
+    	if(!dragracingRuntime.isRewriteReady()) { return; }
     	for(int x=0; x<CAR_COLORS.length-1; x++) {
     		placeCarAvailable( -1, 500, x );
     	}
@@ -608,7 +616,7 @@ public class TrackActivity extends FragmentActivity {
 	public void beginRace() {
 		this.gameStarted = true;
 		int myLoc = dragracingRuntime.getLocation();
-		LinkedList<Integer> locs = dragracingRuntime.getDirectory().getLocations();
+		LinkedList<Integer> locs = (LinkedList<Integer>) dragracingRuntime.getDirectory().getLocations();
 		dragracingRuntime.getRewriteMachine().add_initrace(myLoc, locs);
 		this.setMenuItemVisibility(R.id.action_go, true);
 		this.setMenuItemVisibility(R.id.action_start, false);
@@ -720,8 +728,43 @@ public class TrackActivity extends FragmentActivity {
 				alert.show();
 			}
 		});
-	}	
+	}
 	
+	public void postConfigWifiConnection(final String msg) {
+		if(postedWifiComplaint) { return; }
+		postedWifiComplaint = true;
+		final TrackActivity self = this;
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				AlertDialog.Builder alert = new AlertDialog.Builder(self);
+				alert.setTitle("No Wifi-Direct Connection");
+				alert.setMessage(msg);
+				alert.setPositiveButton("Settings", new OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						self.startActivityForResult(new Intent(Settings.ACTION_WIFI_SETTINGS), RET_WIFI_SETTINGS);
+						dialog.dismiss();
+					}
+				});
+				alert.setNegativeButton("Close", new OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						self.finish();
+					}
+				});
+				alert.show();
+			}
+		});
+	}
+	
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		if (requestCode == RET_WIFI_SETTINGS){
+			postedWifiComplaint = false;
+		}
+	}
+
 	public void postToast(final String msg) {
 		final TrackActivity self = this;
 		runOnUiThread(new Runnable() {
