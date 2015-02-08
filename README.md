@@ -73,7 +73,9 @@ To test Comingle, go to the example directory and try it out:
 
 You'll see a bunch of output, and hopefully, no error messages. If it has ran successfully, you should
 see a directory 'dragracing' with a Java source file 'Dragracing.java'. This Java class implements
-the Comingle runtime specified by the Comingle program 'dragracing.cmg'. 
+the Comingle runtime specified by the Comingle program 'dragracing.cmg'. See the eclipse project
+in https://github.com/sllam/comingle/tree/master/android_apps/CoMingleDragRacing for an example of
+how this CoMingle runtime can be intergrated with an actual Android game.
 
 If you encountered errors in any of the above steps... please contact me (Edmund) at sllam@qatar.cmu.edu .
 Also please accept my apologies, the Comingle prototype is still work in progress, but I'm working hard
