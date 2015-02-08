@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Battleship</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <color name="red">#900000</color>
+    <color name="blue">#000005</color>
+    <color name="white">#FFFFFF</color>
+    <string name="action_start">Init Game</string>
+    <string name="action_go">War!</string>
+
+</resources>

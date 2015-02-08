@@ -1,0 +1,400 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TableLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_below="@+id/textViewLeaveRemainingDescription"
+    android:padding="5dp" >
+
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center" >
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:id="@+id/coord00"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord01" />
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord02" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord03" />                    
+                    
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord04" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord05" />                    
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord06" />                    
+                    
+                </TableRow>
+
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center" >
+
+                   <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord10" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord11" />
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord12" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord13" />                    
+                    
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord14" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord15" />
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord16" />                    
+                    
+                </TableRow>
+                
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center" >
+
+                   <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord20" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord21" />
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord22" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord23" />                    
+                    
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord24" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord25" />
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord26" />                    
+                    
+                </TableRow>
+                
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center" >
+
+                   <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord30" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord31" />
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord32" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord33" />                    
+                    
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord34" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord35" />
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord36" />                    
+                    
+                </TableRow>
+                
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center" >
+
+                   <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord40" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord41" />
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord42" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord43" />                    
+                    
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord44" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord45" />
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord46" />                    
+                    
+                </TableRow>
+                
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center" >
+
+                   <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord50" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord51" />
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord52" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord53" />                    
+                    
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord54" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord55" />
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord56" />                    
+                    
+                </TableRow>
+                                
+                                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center" >
+
+                   <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord60" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord61" />
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord62" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord63" />                    
+                    
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord64" />
+                
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord65" />
+
+                    <include 
+                        layout="@layout/grid_item_layout"
+                        android:layout_height="@dimen/grid_size"
+                        android:layout_width="@dimen/grid_size"
+                        android:layout_weight="1"
+                        android:id="@+id/coord66" />                    
+                    
+                </TableRow>
+                
+</TableLayout>
