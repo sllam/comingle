@@ -47,9 +47,9 @@ public class SeaActivity extends Activity {
 	public static final int MY_SHIP_COLOR = Color.parseColor("#FF58b866");
 	public static final int OPP_SHIP_COLOR = Color.RED;
 	
-	public static final int NUM_OF_DESTROYERS = 1;
-	public static final int NUM_OF_FRIGATES   = 0;
-	public static final int NUM_OF_CARRIERS   = 0;
+	public static final int NUM_OF_DESTROYERS = 4;
+	public static final int NUM_OF_FRIGATES   = 3;
+	public static final int NUM_OF_CARRIERS   = 2;
 	
 	private static final String BS_REQ_CODE = "BATTLESHIP_COMINGLE";
 	private static final int BS_ADMIN_PORT  = 8181;
