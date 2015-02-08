@@ -3,7 +3,8 @@ CoMingle Apps
 
 Toy Android applications, orchestrated by CoMingle.
 
-These Applications are co-developed with Nabeeha Fatima (nhaque@andrew.cmu.edu)
+By Edmund S. L. Lam (sllam@qatar.cmu.edu) and
+   Nabeeha Fatima (nhaque@andrew.cmu.edu)
 
 Basic Requirements
 ==================
