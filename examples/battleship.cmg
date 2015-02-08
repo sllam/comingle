@@ -2,45 +2,63 @@
 ensem battleship {
 
 	module comingle.lib.ExtLib import {
-		union :: ({A},{A}) -> {A},
-		size  :: {A} -> int
+		union :: ({A},{A}) -> {A}.
+		size  :: {A} -> int.
+		makeChain :: (A,[A]) -> ({(A,A)},A).
+		mset :: [A] -> {A}.
 	}
 
-	predicate fireAt :: (loc,int,int) -> trigger.
+	predicate initGame :: (int,int,int,[loc]) -> trigger.
+	predicate fireAt   :: (loc,int,int) -> trigger.
+	predicate empty     :: (int,int) -> trigger.
+	predicate hull      :: (string,int,int) -> trigger.
 
-	predicate empty     :: (int,int) -> fact.
-	predicate hull      :: (string,int,int) -> fact.
+	predicate blastAt :: (loc,int,int) -> fact.
+	predicate next      :: loc -> fact.
+	predicate turn      :: fact.
+	predicate all       :: {loc} -> fact.
 	predicate damaged   :: (string,int,int) -> fact.
-	predicate destroyed :: (string,int,int) -> fact.
-	predicate checkSunk :: (loc,string) -> fact.
+	predicate checkShip :: (loc,string) -> fact.
+	predicate checkFleet :: fact.
+	predicate dead       :: loc -> fact.
 
-	predicate missed :: (loc,int,int) -> actuator.
-	predicate hit    :: (loc,int,int) -> actuator.
-	predicate sunk   :: (loc,string) -> actuator.
+	predicate randomFleet  :: (int,int,int) -> actuator.
+	predicate notifyTurn   :: actuator.
+	predicate missed       :: (loc,loc,int,int) -> actuator.
+	predicate hit          :: (loc,loc,int,int) -> actuator.
+	predicate sunk         :: (loc,loc,string,{(int,int)}) -> actuator.
+	predicate notifyDead   :: loc -> actuator.
+	predicate notifyWinner :: loc -> actuator.
 
-	rule miss :: [B]empty(X,Y) \ [A]fireAt(B,X,Y) --o [A]missed(B,X,Y).
+	rule start :: [I]initGame(G,F,C,Ls) 
+                          --o [I]turn(), [I]notifyTurn(),
+			      { [A]next(B) | (A,B) <- Cs }, [E]next(I), 
+                              { [L]all(Ps), [L]randomFleet(G,F,C) | L <- Ls }
+                              where (Cs,E) = makeChain(I,Ls),
+                                        Ps = mset(Ls).
 
-	rule goodHit :: [A]fireAt(B,X,Y), [B]hull(S,X,Y) --o [B]damaged(S,X,Y), [A]hit(B,X,Y), [B]checkSunk(A,S).
-	rule dmgHit  :: [B]damaged(S,X,Y) \ [A]fireAt(B,X,Y) --o [A]hit(B,X,Y).
-	rule destHit :: [B]destroyed(S,X,Y) \ [A]fireAt(B,X,Y) --o [A]hit(B,X,Y).
+	rule shoot :: [A]next(B) \ [A]fireAt(D,X,Y), [A]turn()
+                           --o [D]blastAt(A,X,Y), [B]turn(), [B]notifyTurn().
 
-	rule sunk :: [B]checkSunk(A,S), { [B]damaged(S,X,Y) | (X,Y) <- Ds }, { [B]hull(S,X,Y) | (X,Y) <- Hs } | (size(Hs))==0
-                          --o { [B]destroyed(S,X,Y) | (X,Y) <- union(Hs,Ds) }, [A]sunk(B,S).
+	rule miss :: [D]empty(X,Y) \ [D]blastAt(A,X,Y) --o [D]missed(A,D,X,Y), [A]missed(A,D,X,Y).
+
+	rule goodHit :: [D]blastAt(A,X,Y), [D]hull(S,X,Y) --o [D]damaged(S,X,Y), [D]checkShip(A,S),
+                                                              [D]hit(A,D,X,Y), [A]hit(A,D,X,Y).
+
+	rule dmgHit  :: [D]damaged(S,X,Y) \ [D]blastAt(A,X,Y) --o [D]hit(A,D,X,Y), [A]hit(A,D,X,Y).
+
+	rule sunk :: [D]all(Ps), { [D]damaged(S,X,Y)|(X,Y)<-Ds } \ [D]checkShip(A,S), 
+                     { [D]hull(S,W,V)|(W,V)<-Hs } | (size(Hs))==0
+                          --o { [P]sunk(A,D,S,Ds) | P <- Ps }, [D]checkFleet().
+
+	rule deadFleet :: [D]all(Ps), [D]checkFleet(), { [D]hull(S,X,Y)|(S,X,Y)<-Hs } | (size(Hs))==0
+                           --o { [P]notifyDead(D), [P]dead(D) | P <- Ps }.
+
+	rule winner :: [D]all(Ps), { [D]dead(O) | O->Os } | Ps==(union(Os,{D})) 
+                           --o { [P]notifyWinner(D) | P<-Ps }.
 
 }
 
 execute battleship {
-
-	exists L0, L1.
-
-	[L0]hull("happy1",1,1), [L0]empty(1,2), [L0]empty(1,3).
-	[L0]hull("happy1",2,1), [L0]empty(2,2), [L0]empty(2,3).
-	[L0]empty(3,1), [L0]hull("happy2",3,2), [L0]empty(3,3).
-	[L0]fireAt(L1,2,2), [L0]fireAt(L1,1,1).
-
-	[L1]hull("sad1",1,1), [L1]hull("sad1",1,2), [L1]empty(1,3).
-	[L1]empty(2,1), [L1]hull("sad2",2,2), [L1]empty(2,3).
-	[L1]empty(3,1), [L1]empty(3,2), [L1]empty(3,3).
-	[L1]fireAt(L0,1,2), [L1]fireAt(L0,1,1), [L1]fireAt(L0,2,3).
 
 }
