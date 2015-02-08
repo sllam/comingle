@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">CoMingle Directory</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="label_me">This device</string>
+    <string name="label_peers">Peers</string>
+    <string name="empty_message">No peers connected</string>
+
+</resources>
