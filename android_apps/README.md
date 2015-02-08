@@ -35,6 +35,29 @@ fix it!
 Once you have established the Wifi-direct connection, you can run the app on each of
 your devices, and start playing!
 
+Apps on the List
+================
+
+This is the list of apps we have built with CoMingle so far. Please drop in from
+time to time, we will be adding more examples!
+
+- Drag Racing:
+  A multi-player racing game, inspired by Chrome Racer (http://www.chrome.com/racer),
+  lets you and your friends race across your mobile phones. 
+
+- Battle Ship:
+  An implementation of the traditional game that pits you and a friend in a guessing
+  game of maritime warfare. Currently implementation supports only two players, but 
+  we'll generalize it to beyond, as soon as we figure out creative ways of display
+  more grids on tiny mobile phone displays. =P
+
+- Wifi-Direct Directory
+  This app demonstrates a simple routing service implemented in CoMingle that maintains
+  on each mobile device, a dynamic IP routing table that allows each device of a 
+  wifi-direct group to communicate with all other devices, via standard network sockets.
+  All instances of the Comingle apps (include the other apps here) bootstraps an instance 
+  of this service to maintain an active communication route to each device in the group.
+
 Note
 ====
 
