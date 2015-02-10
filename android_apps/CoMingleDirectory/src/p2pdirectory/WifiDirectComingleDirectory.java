@@ -8,6 +8,7 @@ import java.util.Map;
 
 import comingle.actuation.ActuatorAction;
 import comingle.facts.SerializedFact;
+import comingle.mset.SimpMultiset;
 import comingle.nodes.SendListener;
 import comingle.rewrite.QuiescenceEvent;
 import comingle.rewrite.QuiescenceListener;
@@ -39,14 +40,31 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 	private final static int DEFAULT_LOCATION = -101;
 	private final static String DEFAULT_IP = "100.100.100.100";
 	
-	public static int next(int loc) {
+	public static int nextLoc(int loc) {
 		return loc+1;
 	}
 	
+	public static int ownerLoc(int i) { return OWNER_LOC;  }
+	
 	private final static Map<String,String> macToIP = new HashMap<String,String>();
+	private static List<NodeInfo> nodeDirList = null;
 	
 	public static String lookupIP(String mac) {
 		return macToIP.get(mac);
+	}
+	
+	private static void setNodeDirList(List<NodeInfo> nodes) {
+		nodeDirList = nodes;
+	}
+	
+	public static SimpMultiset<Tuple4<Integer,String,String,String>> retrieveDir(int i) {
+		SimpMultiset<Tuple4<Integer,String,String,String>> mset = new SimpMultiset<Tuple4<Integer,String,String,String>>();
+		synchronized(nodeDirList) {
+			for(NodeInfo node: nodeDirList) {
+				mset.add( new Tuple4<Integer,String,String,String>(node.location, node.ip_address, node.name, node.mac) );
+			}
+		}
+		return mset;
 	}
 	
 	
@@ -57,6 +75,7 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 	public WifiDirectComingleDirectory(Activity activity, int port, String reqCode, String ownerIP) {
 		super(activity, port, reqCode, ownerIP);
 		this.p2pDir = new P2pdirectory();
+		setNodeDirList(peers);
 		initP2pDir();
 	}
 	
@@ -66,7 +85,7 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 	
 	private void initP2pDir() {
 		
-		p2pDir.setNotifyNodeAddedActuator(new ActuatorAction<Tuple4<Integer,String,String,String>>() {
+		p2pDir.setAddedActuator(new ActuatorAction<Tuple4<Integer,String,String,String>>() {
 			@Override
 			public void doAction(Tuple4<Integer, String, String, String> tup) {
 				int loc       = tup.t1; 
@@ -83,7 +102,7 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 			}
 		});
 		
-		p2pDir.setNotifyNodeRemovedActuator(new ActuatorAction<Integer>() {
+		p2pDir.setRemovedActuator(new ActuatorAction<Integer>() {
 			@Override
 			public void doAction(Integer location) {
 				NodeInfo node = removeNode(location);
@@ -95,7 +114,7 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 			}
 		});
 		
-		p2pDir.setNotifyLocAssignActuator(new ActuatorAction<Integer>() {
+		p2pDir.setYouActuator(new ActuatorAction<Integer>() {
 			@Override
 			public void doAction(Integer myLocation) {
 				// NodeInfo myNode = getNode(myLocation);
@@ -107,7 +126,7 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 			}
 		});
 		
-		p2pDir.setNotifyOwnerQuitActuator(new ActuatorAction<Unit>() {
+		p2pDir.setOwnerQuitActuator(new ActuatorAction<Unit>() {
 			@Override
 			public void doAction(Unit input) {
 				NodeInfo ownerNode = getNode(OWNER_LOC);
@@ -164,11 +183,12 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 		p2pDir.start();
 
 		switch(role) {
-		case OWNER_ROLE: p2pDir.addStartOwner(reqCode, OWNER_LOC); break;
-		case MEMBER_ROLE: p2pDir.addStartMember(reqCode, OWNER_LOC); break;
+		case OWNER_ROLE: p2pDir.addStartOwner(reqCode); break;
+		case MEMBER_ROLE: p2pDir.addStartMember(reqCode); break;
 	}
 		
 	}
+	
 	
 	private void setMyLocation(int loc) {
 		myLocation = loc;
@@ -184,7 +204,7 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 		setLocalNode(local);
 		p2pDir.updateLocation(local.location);
 		p2pDir.updateHostAddress(local.ip_address);
-		p2pDir.addStartMember(reqCode, OWNER_LOC);
+		p2pDir.addStartMember(reqCode);
 		setIsConnected(true);
 		doConnectionEstablishedActions(local);
 		doLocalNodeInfoAvailableActions();
