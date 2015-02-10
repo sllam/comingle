@@ -4,15 +4,18 @@ ensem p2pdirectory {
 	module comingle.lib.ExtLib import {
 		diff :: ({A},{A}) -> {A}.
 		not  :: bool -> bool.
+		union :: ({A},{A}) -> {A}.
 	}
 
 	module p2pdirectory.WifiDirectComingleDirectory import {
-		next :: loc -> loc.
+		nextLoc  :: loc -> loc.
+		ownerLoc :: int -> loc.
 		lookupIP :: string -> string.
+		retrieveDir :: int -> {(loc,string,string,string)}.
 	}
 
-	predicate startOwner  :: (string,loc) -> trigger.
-	predicate startMember :: (string,loc) -> trigger.
+	predicate startOwner  :: string -> trigger.
+	predicate startMember :: string -> trigger.
 	predicate quit        :: trigger.
 	predicate connect     :: (string,string) -> trigger.
 
@@ -23,39 +26,40 @@ ensem p2pdirectory {
 	predicate ownerAt     :: loc -> fact.
 	predicate joinRequest :: (string,string,string) -> fact.
 	predicate reqCode     :: string -> fact.
-	predicate nextLoc     :: loc -> fact.
-	predicate remove      :: loc -> fact.
+	predicate next        :: loc -> fact.
+	predicate exit        :: loc -> fact.
 
-	predicate notifyNodeAdded   :: (loc,string,string,string) -> actuator.
-	predicate notifyNodeRemoved :: loc -> actuator.
-	predicate notifyLocAssign   :: loc -> actuator.
-	predicate notifyOwnerQuit   :: actuator.
+	predicate added   :: (loc,string,string,string) -> actuator.
+	predicate removed :: loc -> actuator.
+	predicate you     :: loc -> actuator.
+	predicate ownerQuit :: actuator.
 
-	rule startOwner  :: [O]startOwner(Code,LocO) 
-                                   --o [O]owner(), [O]node(LocO), [O]reqCode(Code), [O]nextLoc(LocN)
-                                       where LocN = next(LocO).
-	rule startMember :: [M]startMember(Code,LocO) 
-                                   --o [M]member(), [M]reqCode(Code), [M]ownerAt(LocO).
+	rule startOwner  :: [O]startOwner(C) 
+                                   --o [O]owner(), [O]node(O), [O]reqCode(C), [O]next(L)
+                                       where L = nextLoc(O).
+	rule startMember :: [L]startMember(C) 
+                                   --o [L]member(), [L]reqCode(C), [L]ownerAt(O)
+                                       where O = ownerLoc(0).
 
-	rule connect :: [M]member(), [M]ownerAt(O), [M]reqCode(C) \ [M]connect(NameM,MacM) 
-                              --o [O]joinRequest(C,NameM,MacM).
+	rule connect :: [L]member(), [L]ownerAt(O), [L]reqCode(C) \ [L]connect(N,M) 
+                              --o [O]joinRequest(C,N,M).
 
-	rule join :: [O]owner(), [O]reqCode(C), { [O]node(L) | L -> Ls }, { [O]seen(M) | M -> Ms }
-                     \ [O]joinRequest(C,Name,Mac), [O]nextLoc(LocN)
-                           | not(Mac in Ms) --o { [L]notifyNodeAdded(LocN,Inet,Name,Mac) | L <- Ls }, 
-                                                [LocN]notifyNodeAdded(LocN,Inet,Name,Mac), [LocN]notifyLocAssign(LocN), 
-                                                [O]nextLoc(LocU), [O]node(LocN), [O]seen(Mac)
-                                                where LocU = next(LocN),
-                                                      Inet = lookupIP(Mac).
+	rule join :: [O]owner(), [O]reqCode(C), {[O]node(P)|P->Ps}, {[O]seen(S)|S->Ms}
+                     \ [O]joinRequest(C,N,M), [O]next(L) 
+                           | not(M in Ms) --o { [P]added(L,IP,N,M) | P<-Ps }, 
+                                              { [L]added(Lr,Ir,Nr,Mr) | (Lr,Ir,Nr,Mr)<-Ds }, [L]added(L,IP,N,M), [L]you(L), 
+                                              [O]next(U), [O]node(L), [O]seen(M)
+                                                where U  = nextLoc(L),
+                                                      IP = lookupIP(M),
+                                                      Ds = retrieveDir(0).
 
-	rule quitO  :: [O]owner(), { [O]node(M) | M -> Ms } \ [M]quit() 
-                                 --o { [M]notifyOwnerQuit() | M <- Ms } .
+	rule quitO  :: [O]owner(), {[O]node(P)|P->Ps} \ [O]quit() 
+                                 --o { [P]ownerQuit() | P<-Ps }.
 
-	rule quitM  :: [M]member(), [M]ownerAt(O) \ [M]quit() --o [O]remove(M).
-	rule remove :: [O]remove(M), { [O]node(N) | N -> Ns } 
-                            --o { [O]node(N) | N <- Ms },
-                                { [M]notifyNodeRemoved(N) | N <- Ms }
-                                where Ms = diff(Ns,{M}).
+	rule quitM :: [M]member(), [M]ownerAt(O) \ [M]quit() --o [O]exit(M).
+	rule exit  :: [O]exit(M), {[O]node(P)|P->Ps} 
+                            --o { [B]removed(M) | B<-Bs }, {[O]node(B)|B<-Bs}
+                                where Bs = diff(Ps,{M}).
 
 }
 
