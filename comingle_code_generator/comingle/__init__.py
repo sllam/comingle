@@ -14,7 +14,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with CoMingle. If not, see <http://www.gnu.org/licenses/>.
 
-CoMingle Version 0.8, Prototype Alpha
+CoMingle Version 1.0, Beta Prototype
 
 Authors:
 Edmund S. L. Lam      sllam@qatar.cmu.edu
