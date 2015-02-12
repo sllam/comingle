@@ -2,64 +2,54 @@
 ensem p2pdirectory {
 
 	module comingle.lib.ExtLib import {
-		diff :: ({A},{A}) -> {A}.
 		not  :: bool -> bool.
-		union :: ({A},{A}) -> {A}.
 	}
 
 	module p2pdirectory.WifiDirectComingleDirectory import {
-		nextLoc  :: loc -> loc.
 		ownerLoc :: int -> loc.
-		lookupIP :: string -> string.
-		retrieveDir :: int -> {(loc,string,string,string)}.
+		lookupIP :: loc -> string.
+		retrieveDir :: int -> {(loc,string,string)}.
 	}
 
 	predicate startOwner  :: string -> trigger.
 	predicate startMember :: string -> trigger.
 	predicate quit        :: trigger.
-	predicate connect     :: (string,string) -> trigger.
+	predicate connect     :: string -> trigger.
 
-	predicate node        :: loc -> fact.
-	predicate seen        :: string -> fact.
-	predicate member      :: fact.
-	predicate owner       :: fact.
-	predicate ownerAt     :: loc -> fact.
-	predicate joinRequest :: (string,string,string) -> fact.
-	predicate reqCode     :: string -> fact.
-	predicate next        :: loc -> fact.
+	predicate joined      :: loc -> fact.
+	predicate member      :: string -> fact.
+	predicate owner       :: string -> fact.
+	predicate joinRequest :: (string,string,loc) -> fact.
 	predicate exit        :: loc -> fact.
 
-	predicate added   :: (loc,string,string,string) -> actuator.
+	predicate added   :: (loc,string,string) -> actuator.
 	predicate removed :: loc -> actuator.
-	predicate you     :: loc -> actuator.
+	predicate connected :: actuator.
 	predicate ownerQuit :: actuator.
+	predicate deleteDir :: actuator.
 
-	rule startOwner  :: [O]startOwner(C) 
-                                   --o [O]owner(), [O]node(O), [O]reqCode(C), [O]next(L)
-                                       where L = nextLoc(O).
-	rule startMember :: [L]startMember(C) 
-                                   --o [L]member(), [L]reqCode(C), [L]ownerAt(O)
-                                       where O = ownerLoc(0).
+	rule startOwner  :: [O]startOwner(C) --o [O]owner(C), [O]joined(O).
 
-	rule connect :: [L]member(), [L]ownerAt(O), [L]reqCode(C) \ [L]connect(N,M) 
-                              --o [O]joinRequest(C,N,M).
+	rule startMember :: [M]startMember(C) --o [M]member(C).
 
-	rule join :: [O]owner(), [O]reqCode(C), {[O]node(P)|P->Ps}, {[O]seen(S)|S->Ms}
-                     \ [O]joinRequest(C,N,M), [O]next(L) 
-                           | not(M in Ms) --o { [P]added(L,IP,N,M) | P<-Ps }, 
-                                              { [L]added(Lr,Ir,Nr,Mr) | (Lr,Ir,Nr,Mr)<-Ds }, [L]added(L,IP,N,M), [L]you(L), 
-                                              [O]next(U), [O]node(L), [O]seen(M)
-                                                where U  = nextLoc(L),
-                                                      IP = lookupIP(M),
-                                                      Ds = retrieveDir(0).
+	rule connect :: [M]member(C) \ [M]connect(N) 
+                              --o [O]joinRequest(C,N,M) where O = ownerLoc(0).
 
-	rule quitO  :: [O]owner(), {[O]node(P)|P->Ps} \ [O]quit() 
+	rule join :: [O]owner(C), {[O]joined(M)|M->Ms}
+                     \ [O]joinRequest(C,NewN,NewM) | not(NewM in Ms) 
+                            --o { [M]added(NewM,NewIP,NewN) | M<-Ms }, 
+                                { [NewM]added(M,IP,N) | (M,IP,N)<-Ds }, [NewM]added(NewM,NewIP,NewN),
+                                [O]joined(NewM), [NewM]connected()
+                                where NewIP = lookupIP(NewM),
+                                      Ds = retrieveDir(0).
+
+	rule quitO  :: [O]owner(C), [O]quit(), {[O]joined(P)|P->Ps} 
                                  --o { [P]ownerQuit() | P<-Ps }.
 
-	rule quitM :: [M]member(), [M]ownerAt(O) \ [M]quit() --o [O]exit(M).
-	rule exit  :: [O]exit(M), {[O]node(P)|P->Ps} 
-                            --o { [B]removed(M) | B<-Bs }, {[O]node(B)|B<-Bs}
-                                where Bs = diff(Ps,{M}).
+	rule quitM :: [M]member(C) \ [M]quit() --o [O]exit(M) where O = ownerLoc(0).
+
+	rule exit  :: { [O]joined(M) | M->Ms. not(M == N) } \ [O]exit(N), [O]joined(N) 
+                            --o { [M]removed(N) | M<-Ms }, [N]deleteDir().
 
 }
 
