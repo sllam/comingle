@@ -36,64 +36,54 @@ import p2pdirectory.WifiDirectComingleDirectory;
 ensem p2pdirectory {
 
 	module comingle.lib.ExtLib import {
-		diff :: ({A},{A}) -> {A}.
 		not  :: bool -> bool.
-		union :: ({A},{A}) -> {A}.
 	}
 
 	module p2pdirectory.WifiDirectComingleDirectory import {
-		nextLoc  :: loc -> loc.
 		ownerLoc :: int -> loc.
-		lookupIP :: string -> string.
-		retrieveDir :: int -> {(loc,string,string,string)}.
+		lookupIP :: loc -> string.
+		retrieveDir :: int -> {(loc,string,string)}.
 	}
 
 	predicate startOwner  :: string -> trigger.
 	predicate startMember :: string -> trigger.
 	predicate quit        :: trigger.
-	predicate connect     :: (string,string) -> trigger.
+	predicate connect     :: string -> trigger.
 
-	predicate node        :: loc -> fact.
-	predicate seen        :: string -> fact.
-	predicate member      :: fact.
-	predicate owner       :: fact.
-	predicate ownerAt     :: loc -> fact.
-	predicate joinRequest :: (string,string,string) -> fact.
-	predicate reqCode     :: string -> fact.
-	predicate next        :: loc -> fact.
+	predicate joined      :: loc -> fact.
+	predicate member      :: string -> fact.
+	predicate owner       :: string -> fact.
+	predicate joinRequest :: (string,string,loc) -> fact.
 	predicate exit        :: loc -> fact.
 
-	predicate added   :: (loc,string,string,string) -> actuator.
+	predicate added   :: (loc,string,string) -> actuator.
 	predicate removed :: loc -> actuator.
-	predicate you     :: loc -> actuator.
+	predicate connected :: actuator.
 	predicate ownerQuit :: actuator.
+	predicate deleteDir :: actuator.
 
-	rule startOwner  :: [O]startOwner(C) 
-                                   --o [O]owner(), [O]node(O), [O]reqCode(C), [O]next(L)
-                                       where L = nextLoc(O).
-	rule startMember :: [L]startMember(C) 
-                                   --o [L]member(), [L]reqCode(C), [L]ownerAt(O)
-                                       where O = ownerLoc(0).
+	rule startOwner  :: [O]startOwner(C) --o [O]owner(C), [O]joined(O).
 
-	rule connect :: [L]member(), [L]ownerAt(O), [L]reqCode(C) \ [L]connect(N,M) 
-                              --o [O]joinRequest(C,N,M).
+	rule startMember :: [M]startMember(C) --o [M]member(C).
 
-	rule join :: [O]owner(), [O]reqCode(C), {[O]node(P)|P->Ps}, {[O]seen(S)|S->Ms}
-                     \ [O]joinRequest(C,N,M), [O]next(L) 
-                           | not(M in Ms) --o { [P]added(L,IP,N,M) | P<-Ps }, 
-                                              { [L]added(Lr,Ir,Nr,Mr) | (Lr,Ir,Nr,Mr)<-Ds }, [L]added(L,IP,N,M), [L]you(L), 
-                                              [O]next(U), [O]node(L), [O]seen(M)
-                                                where U  = nextLoc(L),
-                                                      IP = lookupIP(M),
-                                                      Ds = retrieveDir(0).
+	rule connect :: [M]member(C) \ [M]connect(N) 
+                              --o [O]joinRequest(C,N,M) where O = ownerLoc(0).
 
-	rule quitO  :: [O]owner(), {[O]node(P)|P->Ps} \ [O]quit() 
+	rule join :: [O]owner(C), {[O]joined(M)|M->Ms}
+                     \ [O]joinRequest(C,NewN,NewM) | not(NewM in Ms) 
+                            --o { [M]added(NewM,NewIP,NewN) | M<-Ms }, 
+                                { [NewM]added(M,IP,N) | (M,IP,N)<-Ds }, [NewM]added(NewM,NewIP,NewN),
+                                [O]joined(NewM), [NewM]connected()
+                                where NewIP = lookupIP(NewM),
+                                      Ds = retrieveDir(0).
+
+	rule quitO  :: [O]owner(C), [O]quit(), {[O]joined(P)|P->Ps} 
                                  --o { [P]ownerQuit() | P<-Ps }.
 
-	rule quitM :: [M]member(), [M]ownerAt(O) \ [M]quit() --o [O]exit(M).
-	rule exit  :: [O]exit(M), {[O]node(P)|P->Ps} 
-                            --o { [B]removed(M) | B<-Bs }, {[O]node(B)|B<-Bs}
-                                where Bs = diff(Ps,{M}).
+	rule quitM :: [M]member(C) \ [M]quit() --o [O]exit(M) where O = ownerLoc(0).
+
+	rule exit  :: { [O]joined(M) | M->Ms. not(M == N) } \ [O]exit(N), [O]joined(N) 
+                            --o { [M]removed(N) | M<-Ms }, [N]deleteDir().
 
 }
 **/
@@ -104,8 +94,9 @@ public class P2pdirectory extends RewriteMachine {
 	public class Actuations {
 		public static final String added = "added";
 		public static final String removed = "removed";
-		public static final String you = "you";
+		public static final String connected = "connected";
 		public static final String ownerquit = "ownerquit";
+		public static final String deletedir = "deletedir";
 		public static final String delay = "delay";
 		public static final String beep = "beep";
 		public static final String toast = "toast";
@@ -188,9 +179,8 @@ public class P2pdirectory extends RewriteMachine {
 	
 	public class Connect extends P2pdirectoryFact {
 		public String arg1;
-		public String arg2;
 	
-		public Connect(int l, String a1, String a2) { super(l); arg1=a1; arg2=a2; }
+		public Connect(int l, String a1) { super(l); arg1=a1; }
 	
 		public int fact_idx() { return 3; }
 	
@@ -202,18 +192,18 @@ public class P2pdirectory extends RewriteMachine {
 	
 		@Override
 		public SerializedFact serialize() {
-			Serializable[] arguments = { (Serializable) arg1, (Serializable) arg2 };
+			Serializable[] arguments = { (Serializable) arg1 };
 			return new SerializedFact(loc, 3, arguments);
 		}
 	
-		public String toString() { return String.format("[%s]Connect(%s,%s)",loc,arg1,arg2); }
+		public String toString() { return String.format("[%s]Connect(%s)",loc,arg1); }
 	
 	}
 	
-	public class Node extends P2pdirectoryFact {
+	public class Joined extends P2pdirectoryFact {
 		public int arg1;
 	
-		public Node(int l, int a1) { super(l); arg1=a1; }
+		public Joined(int l, int a1) { super(l); arg1=a1; }
 	
 		public int fact_idx() { return 4; }
 	
@@ -229,14 +219,14 @@ public class P2pdirectory extends RewriteMachine {
 			return new SerializedFact(loc, 4, arguments);
 		}
 	
-		public String toString() { return String.format("[%s]Node(%s)",loc,arg1); }
+		public String toString() { return String.format("[%s]Joined(%s)",loc,arg1); }
 	
 	}
 	
-	public class Seen extends P2pdirectoryFact {
+	public class Member extends P2pdirectoryFact {
 		public String arg1;
 	
-		public Seen(int l, String a1) { super(l); arg1=a1; }
+		public Member(int l, String a1) { super(l); arg1=a1; }
 	
 		public int fact_idx() { return 5; }
 	
@@ -252,14 +242,14 @@ public class P2pdirectory extends RewriteMachine {
 			return new SerializedFact(loc, 5, arguments);
 		}
 	
-		public String toString() { return String.format("[%s]Seen(%s)",loc,arg1); }
+		public String toString() { return String.format("[%s]Member(%s)",loc,arg1); }
 	
 	}
 	
-	public class Member extends P2pdirectoryFact {
-		
+	public class Owner extends P2pdirectoryFact {
+		public String arg1;
 	
-		public Member(int l) { super(l); }
+		public Owner(int l, String a1) { super(l); arg1=a1; }
 	
 		public int fact_idx() { return 6; }
 	
@@ -271,18 +261,20 @@ public class P2pdirectory extends RewriteMachine {
 	
 		@Override
 		public SerializedFact serialize() {
-			Serializable[] arguments = {  };
+			Serializable[] arguments = { (Serializable) arg1 };
 			return new SerializedFact(loc, 6, arguments);
 		}
 	
-		public String toString() { return String.format("[%s]Member()",loc); }
+		public String toString() { return String.format("[%s]Owner(%s)",loc,arg1); }
 	
 	}
 	
-	public class Owner extends P2pdirectoryFact {
-		
+	public class JoinRequest extends P2pdirectoryFact {
+		public String arg1;
+		public String arg2;
+		public int arg3;
 	
-		public Owner(int l) { super(l); }
+		public JoinRequest(int l, String a1, String a2, int a3) { super(l); arg1=a1; arg2=a2; arg3=a3; }
 	
 		public int fact_idx() { return 7; }
 	
@@ -294,18 +286,18 @@ public class P2pdirectory extends RewriteMachine {
 	
 		@Override
 		public SerializedFact serialize() {
-			Serializable[] arguments = {  };
+			Serializable[] arguments = { (Serializable) arg1, (Serializable) arg2, (Serializable) arg3 };
 			return new SerializedFact(loc, 7, arguments);
 		}
 	
-		public String toString() { return String.format("[%s]Owner()",loc); }
+		public String toString() { return String.format("[%s]JoinRequest(%s,%s,%s)",loc,arg1,arg2,arg3); }
 	
 	}
 	
-	public class OwnerAt extends P2pdirectoryFact {
+	public class Exit extends P2pdirectoryFact {
 		public int arg1;
 	
-		public OwnerAt(int l, int a1) { super(l); arg1=a1; }
+		public Exit(int l, int a1) { super(l); arg1=a1; }
 	
 		public int fact_idx() { return 8; }
 	
@@ -321,21 +313,21 @@ public class P2pdirectory extends RewriteMachine {
 			return new SerializedFact(loc, 8, arguments);
 		}
 	
-		public String toString() { return String.format("[%s]OwnerAt(%s)",loc,arg1); }
+		public String toString() { return String.format("[%s]Exit(%s)",loc,arg1); }
 	
 	}
 	
-	public class JoinRequest extends P2pdirectoryFact {
-		public String arg1;
+	public class Added extends P2pdirectoryFact {
+		public int arg1;
 		public String arg2;
 		public String arg3;
 	
-		public JoinRequest(int l, String a1, String a2, String a3) { super(l); arg1=a1; arg2=a2; arg3=a3; }
+		public Added(int l, int a1, String a2, String a3) { super(l); arg1=a1; arg2=a2; arg3=a3; }
 	
 		public int fact_idx() { return 9; }
 	
 		@Override
-		public void execute(P2pdirectory ensem) { ensem.execute( this ); }
+		public void execute(P2pdirectory ensem) { ensem.invokeActuator("added",Tuples.make_tuple(arg1,arg2,arg3)); }
 	
 		@Override
 		public void intro(P2pdirectory ensem) { ensem.intro( this ); }
@@ -346,102 +338,7 @@ public class P2pdirectory extends RewriteMachine {
 			return new SerializedFact(loc, 9, arguments);
 		}
 	
-		public String toString() { return String.format("[%s]JoinRequest(%s,%s,%s)",loc,arg1,arg2,arg3); }
-	
-	}
-	
-	public class ReqCode extends P2pdirectoryFact {
-		public String arg1;
-	
-		public ReqCode(int l, String a1) { super(l); arg1=a1; }
-	
-		public int fact_idx() { return 10; }
-	
-		@Override
-		public void execute(P2pdirectory ensem) { ensem.execute( this ); }
-	
-		@Override
-		public void intro(P2pdirectory ensem) { ensem.intro( this ); }
-	
-		@Override
-		public SerializedFact serialize() {
-			Serializable[] arguments = { (Serializable) arg1 };
-			return new SerializedFact(loc, 10, arguments);
-		}
-	
-		public String toString() { return String.format("[%s]ReqCode(%s)",loc,arg1); }
-	
-	}
-	
-	public class Next extends P2pdirectoryFact {
-		public int arg1;
-	
-		public Next(int l, int a1) { super(l); arg1=a1; }
-	
-		public int fact_idx() { return 11; }
-	
-		@Override
-		public void execute(P2pdirectory ensem) { ensem.execute( this ); }
-	
-		@Override
-		public void intro(P2pdirectory ensem) { ensem.intro( this ); }
-	
-		@Override
-		public SerializedFact serialize() {
-			Serializable[] arguments = { (Serializable) arg1 };
-			return new SerializedFact(loc, 11, arguments);
-		}
-	
-		public String toString() { return String.format("[%s]Next(%s)",loc,arg1); }
-	
-	}
-	
-	public class Exit extends P2pdirectoryFact {
-		public int arg1;
-	
-		public Exit(int l, int a1) { super(l); arg1=a1; }
-	
-		public int fact_idx() { return 12; }
-	
-		@Override
-		public void execute(P2pdirectory ensem) { ensem.execute( this ); }
-	
-		@Override
-		public void intro(P2pdirectory ensem) { ensem.intro( this ); }
-	
-		@Override
-		public SerializedFact serialize() {
-			Serializable[] arguments = { (Serializable) arg1 };
-			return new SerializedFact(loc, 12, arguments);
-		}
-	
-		public String toString() { return String.format("[%s]Exit(%s)",loc,arg1); }
-	
-	}
-	
-	public class Added extends P2pdirectoryFact {
-		public int arg1;
-		public String arg2;
-		public String arg3;
-		public String arg4;
-	
-		public Added(int l, int a1, String a2, String a3, String a4) { super(l); arg1=a1; arg2=a2; arg3=a3; arg4=a4; }
-	
-		public int fact_idx() { return 13; }
-	
-		@Override
-		public void execute(P2pdirectory ensem) { ensem.invokeActuator("added",Tuples.make_tuple(arg1,arg2,arg3,arg4)); }
-	
-		@Override
-		public void intro(P2pdirectory ensem) { ensem.intro( this ); }
-	
-		@Override
-		public SerializedFact serialize() {
-			Serializable[] arguments = { (Serializable) arg1, (Serializable) arg2, (Serializable) arg3, (Serializable) arg4 };
-			return new SerializedFact(loc, 13, arguments);
-		}
-	
-		public String toString() { return String.format("[%s]Added(%s,%s,%s,%s)",loc,arg1,arg2,arg3,arg4); }
+		public String toString() { return String.format("[%s]Added(%s,%s,%s)",loc,arg1,arg2,arg3); }
 	
 	}
 	
@@ -450,7 +347,7 @@ public class P2pdirectory extends RewriteMachine {
 	
 		public Removed(int l, int a1) { super(l); arg1=a1; }
 	
-		public int fact_idx() { return 14; }
+		public int fact_idx() { return 10; }
 	
 		@Override
 		public void execute(P2pdirectory ensem) { ensem.invokeActuator("removed",arg1); }
@@ -461,33 +358,33 @@ public class P2pdirectory extends RewriteMachine {
 		@Override
 		public SerializedFact serialize() {
 			Serializable[] arguments = { (Serializable) arg1 };
-			return new SerializedFact(loc, 14, arguments);
+			return new SerializedFact(loc, 10, arguments);
 		}
 	
 		public String toString() { return String.format("[%s]Removed(%s)",loc,arg1); }
 	
 	}
 	
-	public class You extends P2pdirectoryFact {
-		public int arg1;
+	public class Connected extends P2pdirectoryFact {
+		
 	
-		public You(int l, int a1) { super(l); arg1=a1; }
+		public Connected(int l) { super(l); }
 	
-		public int fact_idx() { return 15; }
+		public int fact_idx() { return 11; }
 	
 		@Override
-		public void execute(P2pdirectory ensem) { ensem.invokeActuator("you",arg1); }
+		public void execute(P2pdirectory ensem) { ensem.invokeActuator("connected",Tuples.make_unit()); }
 	
 		@Override
 		public void intro(P2pdirectory ensem) { ensem.intro( this ); }
 	
 		@Override
 		public SerializedFact serialize() {
-			Serializable[] arguments = { (Serializable) arg1 };
-			return new SerializedFact(loc, 15, arguments);
+			Serializable[] arguments = {  };
+			return new SerializedFact(loc, 11, arguments);
 		}
 	
-		public String toString() { return String.format("[%s]You(%s)",loc,arg1); }
+		public String toString() { return String.format("[%s]Connected()",loc); }
 	
 	}
 	
@@ -496,7 +393,7 @@ public class P2pdirectory extends RewriteMachine {
 	
 		public OwnerQuit(int l) { super(l); }
 	
-		public int fact_idx() { return 16; }
+		public int fact_idx() { return 12; }
 	
 		@Override
 		public void execute(P2pdirectory ensem) { ensem.invokeActuator("ownerquit",Tuples.make_unit()); }
@@ -507,10 +404,33 @@ public class P2pdirectory extends RewriteMachine {
 		@Override
 		public SerializedFact serialize() {
 			Serializable[] arguments = {  };
-			return new SerializedFact(loc, 16, arguments);
+			return new SerializedFact(loc, 12, arguments);
 		}
 	
 		public String toString() { return String.format("[%s]OwnerQuit()",loc); }
+	
+	}
+	
+	public class DeleteDir extends P2pdirectoryFact {
+		
+	
+		public DeleteDir(int l) { super(l); }
+	
+		public int fact_idx() { return 13; }
+	
+		@Override
+		public void execute(P2pdirectory ensem) { ensem.invokeActuator("deletedir",Tuples.make_unit()); }
+	
+		@Override
+		public void intro(P2pdirectory ensem) { ensem.intro( this ); }
+	
+		@Override
+		public SerializedFact serialize() {
+			Serializable[] arguments = {  };
+			return new SerializedFact(loc, 13, arguments);
+		}
+	
+		public String toString() { return String.format("[%s]DeleteDir()",loc); }
 	
 	}
 	
@@ -519,7 +439,7 @@ public class P2pdirectory extends RewriteMachine {
 	
 		public Delay(int l, int a1) { super(l); arg1=a1; }
 	
-		public int fact_idx() { return 17; }
+		public int fact_idx() { return 14; }
 	
 		@Override
 		public void execute(P2pdirectory ensem) { ensem.invokeActuator("delay",arg1); }
@@ -530,7 +450,7 @@ public class P2pdirectory extends RewriteMachine {
 		@Override
 		public SerializedFact serialize() {
 			Serializable[] arguments = { (Serializable) arg1 };
-			return new SerializedFact(loc, 17, arguments);
+			return new SerializedFact(loc, 14, arguments);
 		}
 	
 		public String toString() { return String.format("[%s]Delay(%s)",loc,arg1); }
@@ -542,7 +462,7 @@ public class P2pdirectory extends RewriteMachine {
 	
 		public Beep(int l, String a1) { super(l); arg1=a1; }
 	
-		public int fact_idx() { return 18; }
+		public int fact_idx() { return 15; }
 	
 		@Override
 		public void execute(P2pdirectory ensem) { ensem.invokeActuator("beep",arg1); }
@@ -553,7 +473,7 @@ public class P2pdirectory extends RewriteMachine {
 		@Override
 		public SerializedFact serialize() {
 			Serializable[] arguments = { (Serializable) arg1 };
-			return new SerializedFact(loc, 18, arguments);
+			return new SerializedFact(loc, 15, arguments);
 		}
 	
 		public String toString() { return String.format("[%s]Beep(%s)",loc,arg1); }
@@ -565,7 +485,7 @@ public class P2pdirectory extends RewriteMachine {
 	
 		public Toast(int l, String a1) { super(l); arg1=a1; }
 	
-		public int fact_idx() { return 19; }
+		public int fact_idx() { return 16; }
 	
 		@Override
 		public void execute(P2pdirectory ensem) { ensem.invokeActuator("toast",arg1); }
@@ -576,7 +496,7 @@ public class P2pdirectory extends RewriteMachine {
 		@Override
 		public SerializedFact serialize() {
 			Serializable[] arguments = { (Serializable) arg1 };
-			return new SerializedFact(loc, 19, arguments);
+			return new SerializedFact(loc, 16, arguments);
 		}
 	
 		public String toString() { return String.format("[%s]Toast(%s)",loc,arg1); }
@@ -590,34 +510,28 @@ public class P2pdirectory extends RewriteMachine {
 	protected static int index0Connect(int loc) {
 		return Hash.hash(loc);
 	}
-	protected static int index0Node(int loc) {
+	protected static int index0Joined(int loc) {
 		return Hash.hash(loc);
 	}
-	protected static int index0Seen(int loc) {
-		return Hash.hash(loc);
+	protected static int index1Joined(int loc, int arg1) {
+		return Hash.join(Hash.hash(loc),Hash.hash(arg1));
 	}
 	protected static int index0Member(int loc) {
 		return Hash.hash(loc);
 	}
-	protected static int index0Owner(int loc) {
-		return Hash.hash(loc);
+	protected static int index0Owner(int loc, String arg1) {
+		return Hash.join(Hash.hash(loc),Hash.hash(arg1));
 	}
-	protected static int index0OwnerAt(int loc) {
+	protected static int index1Owner(int loc) {
 		return Hash.hash(loc);
 	}
 	protected static int index0JoinRequest(int loc, String arg1) {
 		return Hash.join(Hash.hash(loc),Hash.hash(arg1));
 	}
-	protected static int index0ReqCode(int loc) {
-		return Hash.hash(loc);
-	}
-	protected static int index1ReqCode(int loc, String arg1) {
+	protected static int index0Exit(int loc, int arg1) {
 		return Hash.join(Hash.hash(loc),Hash.hash(arg1));
 	}
-	protected static int index0Next(int loc) {
-		return Hash.hash(loc);
-	}
-	protected static int index0Exit(int loc) {
+	protected static int index1Exit(int loc) {
 		return Hash.hash(loc);
 	}
 
@@ -625,22 +539,19 @@ public class P2pdirectory extends RewriteMachine {
 	protected static final int startmember_fact_idx = 1;
 	protected static final int quit_fact_idx = 2;
 	protected static final int connect_fact_idx = 3;
-	protected static final int node_fact_idx = 4;
-	protected static final int seen_fact_idx = 5;
-	protected static final int member_fact_idx = 6;
-	protected static final int owner_fact_idx = 7;
-	protected static final int ownerat_fact_idx = 8;
-	protected static final int joinrequest_fact_idx = 9;
-	protected static final int reqcode_fact_idx = 10;
-	protected static final int next_fact_idx = 11;
-	protected static final int exit_fact_idx = 12;
-	protected static final int added_fact_idx = 13;
-	protected static final int removed_fact_idx = 14;
-	protected static final int you_fact_idx = 15;
-	protected static final int ownerquit_fact_idx = 16;
-	protected static final int delay_fact_idx = 17;
-	protected static final int beep_fact_idx = 18;
-	protected static final int toast_fact_idx = 19;
+	protected static final int joined_fact_idx = 4;
+	protected static final int member_fact_idx = 5;
+	protected static final int owner_fact_idx = 6;
+	protected static final int joinrequest_fact_idx = 7;
+	protected static final int exit_fact_idx = 8;
+	protected static final int added_fact_idx = 9;
+	protected static final int removed_fact_idx = 10;
+	protected static final int connected_fact_idx = 11;
+	protected static final int ownerquit_fact_idx = 12;
+	protected static final int deletedir_fact_idx = 13;
+	protected static final int delay_fact_idx = 14;
+	protected static final int beep_fact_idx = 15;
+	protected static final int toast_fact_idx = 16;
 
 	protected Goals<P2pdirectoryFact> goals;
 
@@ -650,25 +561,19 @@ public class P2pdirectory extends RewriteMachine {
 	protected ListStore<Quit> quit_store_1;
 	protected MultiMapStore<Connect> connect_store_0;
 	protected ListStore<Connect> connect_store_1;
-	protected MultiMapStore<Node> node_store_0;
-	protected ListStore<Node> node_store_1;
-	protected MultiMapStore<Seen> seen_store_0;
-	protected ListStore<Seen> seen_store_1;
+	protected MultiMapStore<Joined> joined_store_0;
+	protected MultiMapStore<Joined> joined_store_1;
+	protected ListStore<Joined> joined_store_2;
 	protected MultiMapStore<Member> member_store_0;
 	protected ListStore<Member> member_store_1;
 	protected MultiMapStore<Owner> owner_store_0;
-	protected ListStore<Owner> owner_store_1;
-	protected MultiMapStore<OwnerAt> ownerat_store_0;
-	protected ListStore<OwnerAt> ownerat_store_1;
+	protected MultiMapStore<Owner> owner_store_1;
+	protected ListStore<Owner> owner_store_2;
 	protected MultiMapStore<JoinRequest> joinrequest_store_0;
 	protected ListStore<JoinRequest> joinrequest_store_1;
-	protected MultiMapStore<ReqCode> reqcode_store_0;
-	protected MultiMapStore<ReqCode> reqcode_store_1;
-	protected ListStore<ReqCode> reqcode_store_2;
-	protected MultiMapStore<Next> next_store_0;
-	protected ListStore<Next> next_store_1;
 	protected MultiMapStore<Exit> exit_store_0;
-	protected ListStore<Exit> exit_store_1;
+	protected MultiMapStore<Exit> exit_store_1;
+	protected ListStore<Exit> exit_store_2;
 
 	protected int startOwner_rule_count;
 	protected int startMember_rule_count;
@@ -718,21 +623,17 @@ public class P2pdirectory extends RewriteMachine {
 		connect_store_1.set_name("Connect Store");
 		// set_store_component( connect_store_1 );
 		
-		node_store_0 = new MultiMapStore<Node>();
-		node_store_0.set_name("Node Store");
-		// set_store_component( node_store_0 );
+		joined_store_0 = new MultiMapStore<Joined>();
+		joined_store_0.set_name("Joined Store");
+		// set_store_component( joined_store_0 );
 		
-		node_store_1 = new ListStore<Node>();
-		node_store_1.set_name("Node Store");
-		// set_store_component( node_store_1 );
+		joined_store_1 = new MultiMapStore<Joined>();
+		joined_store_1.set_name("Joined Store");
+		// set_store_component( joined_store_1 );
 		
-		seen_store_0 = new MultiMapStore<Seen>();
-		seen_store_0.set_name("Seen Store");
-		// set_store_component( seen_store_0 );
-		
-		seen_store_1 = new ListStore<Seen>();
-		seen_store_1.set_name("Seen Store");
-		// set_store_component( seen_store_1 );
+		joined_store_2 = new ListStore<Joined>();
+		joined_store_2.set_name("Joined Store");
+		// set_store_component( joined_store_2 );
 		
 		member_store_0 = new MultiMapStore<Member>();
 		member_store_0.set_name("Member Store");
@@ -746,17 +647,13 @@ public class P2pdirectory extends RewriteMachine {
 		owner_store_0.set_name("Owner Store");
 		// set_store_component( owner_store_0 );
 		
-		owner_store_1 = new ListStore<Owner>();
+		owner_store_1 = new MultiMapStore<Owner>();
 		owner_store_1.set_name("Owner Store");
 		// set_store_component( owner_store_1 );
 		
-		ownerat_store_0 = new MultiMapStore<OwnerAt>();
-		ownerat_store_0.set_name("OwnerAt Store");
-		// set_store_component( ownerat_store_0 );
-		
-		ownerat_store_1 = new ListStore<OwnerAt>();
-		ownerat_store_1.set_name("OwnerAt Store");
-		// set_store_component( ownerat_store_1 );
+		owner_store_2 = new ListStore<Owner>();
+		owner_store_2.set_name("Owner Store");
+		// set_store_component( owner_store_2 );
 		
 		joinrequest_store_0 = new MultiMapStore<JoinRequest>();
 		joinrequest_store_0.set_name("JoinRequest Store");
@@ -766,48 +663,28 @@ public class P2pdirectory extends RewriteMachine {
 		joinrequest_store_1.set_name("JoinRequest Store");
 		// set_store_component( joinrequest_store_1 );
 		
-		reqcode_store_0 = new MultiMapStore<ReqCode>();
-		reqcode_store_0.set_name("ReqCode Store");
-		// set_store_component( reqcode_store_0 );
-		
-		reqcode_store_1 = new MultiMapStore<ReqCode>();
-		reqcode_store_1.set_name("ReqCode Store");
-		// set_store_component( reqcode_store_1 );
-		
-		reqcode_store_2 = new ListStore<ReqCode>();
-		reqcode_store_2.set_name("ReqCode Store");
-		// set_store_component( reqcode_store_2 );
-		
-		next_store_0 = new MultiMapStore<Next>();
-		next_store_0.set_name("Next Store");
-		// set_store_component( next_store_0 );
-		
-		next_store_1 = new ListStore<Next>();
-		next_store_1.set_name("Next Store");
-		// set_store_component( next_store_1 );
-		
 		exit_store_0 = new MultiMapStore<Exit>();
 		exit_store_0.set_name("Exit Store");
 		// set_store_component( exit_store_0 );
 		
-		exit_store_1 = new ListStore<Exit>();
+		exit_store_1 = new MultiMapStore<Exit>();
 		exit_store_1.set_name("Exit Store");
 		// set_store_component( exit_store_1 );
+		
+		exit_store_2 = new ListStore<Exit>();
+		exit_store_2.set_name("Exit Store");
+		// set_store_component( exit_store_2 );
 		
 	
 		set_store_component( startowner_store_0 );
 		set_store_component( startmember_store_0 );
 		set_store_component( quit_store_1 );
 		set_store_component( connect_store_1 );
-		set_store_component( node_store_1 );
-		set_store_component( seen_store_1 );
+		set_store_component( joined_store_2 );
 		set_store_component( member_store_1 );
-		set_store_component( owner_store_1 );
-		set_store_component( ownerat_store_1 );
+		set_store_component( owner_store_2 );
 		set_store_component( joinrequest_store_1 );
-		set_store_component( reqcode_store_2 );
-		set_store_component( next_store_1 );
-		set_store_component( exit_store_1 );
+		set_store_component( exit_store_2 );
 	}
 	
 
@@ -840,39 +717,33 @@ public class P2pdirectory extends RewriteMachine {
 			
 			case 2: return new Quit(fact.loc);
 			
-			case 3: return new Connect(fact.loc,(String) args[0],(String) args[1]);
+			case 3: return new Connect(fact.loc,(String) args[0]);
 			
-			case 4: return new Node(fact.loc,(Integer) args[0]);
+			case 4: return new Joined(fact.loc,(Integer) args[0]);
 			
-			case 5: return new Seen(fact.loc,(String) args[0]);
+			case 5: return new Member(fact.loc,(String) args[0]);
 			
-			case 6: return new Member(fact.loc);
+			case 6: return new Owner(fact.loc,(String) args[0]);
 			
-			case 7: return new Owner(fact.loc);
+			case 7: return new JoinRequest(fact.loc,(String) args[0],(String) args[1],(Integer) args[2]);
 			
-			case 8: return new OwnerAt(fact.loc,(Integer) args[0]);
+			case 8: return new Exit(fact.loc,(Integer) args[0]);
 			
-			case 9: return new JoinRequest(fact.loc,(String) args[0],(String) args[1],(String) args[2]);
+			case 9: return new Added(fact.loc,(Integer) args[0],(String) args[1],(String) args[2]);
 			
-			case 10: return new ReqCode(fact.loc,(String) args[0]);
+			case 10: return new Removed(fact.loc,(Integer) args[0]);
 			
-			case 11: return new Next(fact.loc,(Integer) args[0]);
+			case 11: return new Connected(fact.loc);
 			
-			case 12: return new Exit(fact.loc,(Integer) args[0]);
+			case 12: return new OwnerQuit(fact.loc);
 			
-			case 13: return new Added(fact.loc,(Integer) args[0],(String) args[1],(String) args[2],(String) args[3]);
+			case 13: return new DeleteDir(fact.loc);
 			
-			case 14: return new Removed(fact.loc,(Integer) args[0]);
+			case 14: return new Delay(fact.loc,(Integer) args[0]);
 			
-			case 15: return new You(fact.loc,(Integer) args[0]);
+			case 15: return new Beep(fact.loc,(String) args[0]);
 			
-			case 16: return new OwnerQuit(fact.loc);
-			
-			case 17: return new Delay(fact.loc,(Integer) args[0]);
-			
-			case 18: return new Beep(fact.loc,(String) args[0]);
-			
-			case 19: return new Toast(fact.loc,(String) args[0]);
+			case 16: return new Toast(fact.loc,(String) args[0]);
 			
 		}
 		return null;
@@ -908,14 +779,10 @@ public class P2pdirectory extends RewriteMachine {
 		connect_store_1.add( connect );
 	} 				
 	
-	protected void store(Node node) {
-		node_store_0.add( node, index0Node(node.loc) );
-		node_store_1.add( node );
-	} 				
-	
-	protected void store(Seen seen) {
-		seen_store_0.add( seen, index0Seen(seen.loc) );
-		seen_store_1.add( seen );
+	protected void store(Joined joined) {
+		joined_store_0.add( joined, index0Joined(joined.loc) );
+		joined_store_1.add( joined, index1Joined(joined.loc,joined.arg1) );
+		joined_store_2.add( joined );
 	} 				
 	
 	protected void store(Member member) {
@@ -924,13 +791,9 @@ public class P2pdirectory extends RewriteMachine {
 	} 				
 	
 	protected void store(Owner owner) {
-		owner_store_0.add( owner, index0Owner(owner.loc) );
-		owner_store_1.add( owner );
-	} 				
-	
-	protected void store(OwnerAt ownerat) {
-		ownerat_store_0.add( ownerat, index0OwnerAt(ownerat.loc) );
-		ownerat_store_1.add( ownerat );
+		owner_store_0.add( owner, index0Owner(owner.loc,owner.arg1) );
+		owner_store_1.add( owner, index1Owner(owner.loc) );
+		owner_store_2.add( owner );
 	} 				
 	
 	protected void store(JoinRequest joinrequest) {
@@ -938,20 +801,10 @@ public class P2pdirectory extends RewriteMachine {
 		joinrequest_store_1.add( joinrequest );
 	} 				
 	
-	protected void store(ReqCode reqcode) {
-		reqcode_store_0.add( reqcode, index0ReqCode(reqcode.loc) );
-		reqcode_store_1.add( reqcode, index1ReqCode(reqcode.loc,reqcode.arg1) );
-		reqcode_store_2.add( reqcode );
-	} 				
-	
-	protected void store(Next next) {
-		next_store_0.add( next, index0Next(next.loc) );
-		next_store_1.add( next );
-	} 				
-	
 	protected void store(Exit exit) {
-		exit_store_0.add( exit, index0Exit(exit.loc) );
-		exit_store_1.add( exit );
+		exit_store_0.add( exit, index0Exit(exit.loc,exit.arg1) );
+		exit_store_1.add( exit, index1Exit(exit.loc) );
+		exit_store_2.add( exit );
 	} 				
 	
 	protected void store(Added added) {
@@ -962,11 +815,15 @@ public class P2pdirectory extends RewriteMachine {
 		
 	} 				
 	
-	protected void store(You you) {
+	protected void store(Connected connected) {
 		
 	} 				
 	
 	protected void store(OwnerQuit ownerquit) {
+		
+	} 				
+	
+	protected void store(DeleteDir deletedir) {
 		
 	} 				
 	
@@ -1000,57 +857,33 @@ public class P2pdirectory extends RewriteMachine {
 		}
 	}
 	
-	public void add_connect(int loc,String arg1,String arg2) {
+	public void add_connect(int loc,String arg1) {
 		if (isSolo || location == loc) {
-			intro( new Connect(loc,arg1,arg2) );
+			intro( new Connect(loc,arg1) );
 		}
 	}
 	
-	public void add_node(int loc,int arg1) {
+	public void add_joined(int loc,int arg1) {
 		if (isSolo || location == loc) {
-			intro( new Node(loc,arg1) );
+			intro( new Joined(loc,arg1) );
 		}
 	}
 	
-	public void add_seen(int loc,String arg1) {
+	public void add_member(int loc,String arg1) {
 		if (isSolo || location == loc) {
-			intro( new Seen(loc,arg1) );
+			intro( new Member(loc,arg1) );
 		}
 	}
 	
-	public void add_member(int loc) {
+	public void add_owner(int loc,String arg1) {
 		if (isSolo || location == loc) {
-			intro( new Member(loc) );
+			intro( new Owner(loc,arg1) );
 		}
 	}
 	
-	public void add_owner(int loc) {
-		if (isSolo || location == loc) {
-			intro( new Owner(loc) );
-		}
-	}
-	
-	public void add_ownerat(int loc,int arg1) {
-		if (isSolo || location == loc) {
-			intro( new OwnerAt(loc,arg1) );
-		}
-	}
-	
-	public void add_joinrequest(int loc,String arg1,String arg2,String arg3) {
+	public void add_joinrequest(int loc,String arg1,String arg2,int arg3) {
 		if (isSolo || location == loc) {
 			intro( new JoinRequest(loc,arg1,arg2,arg3) );
-		}
-	}
-	
-	public void add_reqcode(int loc,String arg1) {
-		if (isSolo || location == loc) {
-			intro( new ReqCode(loc,arg1) );
-		}
-	}
-	
-	public void add_next(int loc,int arg1) {
-		if (isSolo || location == loc) {
-			intro( new Next(loc,arg1) );
 		}
 	}
 	
@@ -1060,9 +893,9 @@ public class P2pdirectory extends RewriteMachine {
 		}
 	}
 	
-	public void add_added(int loc,int arg1,String arg2,String arg3,String arg4) {
+	public void add_added(int loc,int arg1,String arg2,String arg3) {
 		if (isSolo || location == loc) {
-			intro( new Added(loc,arg1,arg2,arg3,arg4) );
+			intro( new Added(loc,arg1,arg2,arg3) );
 		}
 	}
 	
@@ -1072,15 +905,21 @@ public class P2pdirectory extends RewriteMachine {
 		}
 	}
 	
-	public void add_you(int loc,int arg1) {
+	public void add_connected(int loc) {
 		if (isSolo || location == loc) {
-			intro( new You(loc,arg1) );
+			intro( new Connected(loc) );
 		}
 	}
 	
 	public void add_ownerquit(int loc) {
 		if (isSolo || location == loc) {
 			intro( new OwnerQuit(loc) );
+		}
+	}
+	
+	public void add_deletedir(int loc) {
+		if (isSolo || location == loc) {
+			intro( new DeleteDir(loc) );
 		}
 	}
 	
@@ -1122,15 +961,9 @@ public class P2pdirectory extends RewriteMachine {
 		notify_new_goals();
 	}
 	
-	protected void intro(Node node) {
-		goals.add( node );
-		store( node );
-		notify_new_goals();
-	}	
-	
-	protected void intro(Seen seen) {
-		goals.add( seen );
-		store( seen );
+	protected void intro(Joined joined) {
+		goals.add( joined );
+		store( joined );
 		notify_new_goals();
 	}	
 	
@@ -1144,23 +977,8 @@ public class P2pdirectory extends RewriteMachine {
 		notify_new_goals();
 	}
 	
-	protected void intro(OwnerAt ownerat) {
-		goals.add( ownerat );
-		notify_new_goals();
-	}
-	
 	protected void intro(JoinRequest joinrequest) {
 		goals.add( joinrequest );
-		notify_new_goals();
-	}
-	
-	protected void intro(ReqCode reqcode) {
-		goals.add( reqcode );
-		notify_new_goals();
-	}
-	
-	protected void intro(Next next) {
-		goals.add( next );
 		notify_new_goals();
 	}
 	
@@ -1179,13 +997,18 @@ public class P2pdirectory extends RewriteMachine {
 		notify_new_goals();
 	}
 	
-	protected void intro(You you) {
-		goals.add( you );
+	protected void intro(Connected connected) {
+		goals.add( connected );
 		notify_new_goals();
 	}
 	
 	protected void intro(OwnerQuit ownerquit) {
 		goals.add( ownerquit );
+		notify_new_goals();
+	}
+	
+	protected void intro(DeleteDir deletedir) {
+		goals.add( deletedir );
 		notify_new_goals();
 	}
 	
@@ -1239,19 +1062,11 @@ public class P2pdirectory extends RewriteMachine {
 		}
 	}
 	
-	protected void send(Node node) {
-		if(location == node.get_loc()) {
-			intro(node);
+	protected void send(Joined joined) {
+		if(location == joined.get_loc()) {
+			intro(joined);
 		} else {
-			send_buffers.add(node);
-		}
-	}
-	
-	protected void send(Seen seen) {
-		if(location == seen.get_loc()) {
-			intro(seen);
-		} else {
-			send_buffers.add(seen);
+			send_buffers.add(joined);
 		}
 	}
 	
@@ -1271,35 +1086,11 @@ public class P2pdirectory extends RewriteMachine {
 		}
 	}
 	
-	protected void send(OwnerAt ownerat) {
-		if(location == ownerat.get_loc()) {
-			intro(ownerat);
-		} else {
-			send_buffers.add(ownerat);
-		}
-	}
-	
 	protected void send(JoinRequest joinrequest) {
 		if(location == joinrequest.get_loc()) {
 			intro(joinrequest);
 		} else {
 			send_buffers.add(joinrequest);
-		}
-	}
-	
-	protected void send(ReqCode reqcode) {
-		if(location == reqcode.get_loc()) {
-			intro(reqcode);
-		} else {
-			send_buffers.add(reqcode);
-		}
-	}
-	
-	protected void send(Next next) {
-		if(location == next.get_loc()) {
-			intro(next);
-		} else {
-			send_buffers.add(next);
 		}
 	}
 	
@@ -1327,11 +1118,11 @@ public class P2pdirectory extends RewriteMachine {
 		}
 	}
 	
-	protected void send(You you) {
-		if(location == you.get_loc()) {
-			intro(you);
+	protected void send(Connected connected) {
+		if(location == connected.get_loc()) {
+			intro(connected);
 		} else {
-			send_buffers.add(you);
+			send_buffers.add(connected);
 		}
 	}
 	
@@ -1340,6 +1131,14 @@ public class P2pdirectory extends RewriteMachine {
 			intro(ownerquit);
 		} else {
 			send_buffers.add(ownerquit);
+		}
+	}
+	
+	protected void send(DeleteDir deletedir) {
+		if(location == deletedir.get_loc()) {
+			intro(deletedir);
+		} else {
+			send_buffers.add(deletedir);
 		}
 	}
 	
@@ -1381,12 +1180,12 @@ public class P2pdirectory extends RewriteMachine {
 		intro( new Quit(location) );
 	}
 	
-	public void addConnect(String arg1,String arg2) {
-		intro( new Connect(location,arg1,arg2) );
+	public void addConnect(String arg1) {
+		intro( new Connect(location,arg1) );
 	}
 	
 
-	public void setAddedActuator(ActuatorAction<Tuple4<Integer,String,String,String>> action) {
+	public void setAddedActuator(ActuatorAction<Tuple3<Integer,String,String>> action) {
 		setActuator("added", action);
 	}
 	
@@ -1394,12 +1193,16 @@ public class P2pdirectory extends RewriteMachine {
 		setActuator("removed", action);
 	}
 	
-	public void setYouActuator(ActuatorAction<Integer> action) {
-		setActuator("you", action);
+	public void setConnectedActuator(ActuatorAction<Unit> action) {
+		setActuator("connected", action);
 	}
 	
 	public void setOwnerQuitActuator(ActuatorAction<Unit> action) {
 		setActuator("ownerquit", action);
+	}
+	
+	public void setDeleteDirActuator(ActuatorAction<Unit> action) {
+		setActuator("deletedir", action);
 	}
 	
 	public void setDelayActuator(ActuatorAction<Integer> action) {
@@ -1430,33 +1233,22 @@ public class P2pdirectory extends RewriteMachine {
 	Rule Head Compre Binders: 
 	Active #H0 [(O::0)]startOwner((C::1))
 	DeleteHead #H0
-	LetBind (L::2) nextLoc((O::0))
-	IntroAtom Local NoPrior Mono [(O::0)]owner()
-	IntroAtom Local NoPrior NonMono [(O::0)]node((O::0))
-	IntroAtom Local NoPrior Mono [(O::0)]reqCode((C::1))
-	IntroAtom Local NoPrior Mono [(O::0)]next((L::2))
+	IntroAtom Local NoPrior Mono [(O::0)]owner((C::1))
+	IntroAtom Local NoPrior NonMono [(O::0)]joined((O::0))
 	*/
 	protected boolean execute_startowner_join_ordering_1(StartOwner act) {
 		
 		String c;
-		int l;
 		int o;
 		// Join Task: Active #H0 [(O::0)]startOwner((C::1))
 		o = act.loc;
 		c = act.arg1;
 		// Join Task: DeleteHead #H0
 		// H0 is active and monotone, no delete required
-		// Join Task: LetBind (L::2) nextLoc((O::0))
-		l = WifiDirectComingleDirectory.nextLoc(o);
-		;
-		// Join Task: IntroAtom Local NoPrior Mono [(O::0)]owner()
-		intro( new Owner(o) );
-		// Join Task: IntroAtom Local NoPrior NonMono [(O::0)]node((O::0))
-		intro( new Node(o,o) );
-		// Join Task: IntroAtom Local NoPrior Mono [(O::0)]reqCode((C::1))
-		intro( new ReqCode(o,c) );
-		// Join Task: IntroAtom Local NoPrior Mono [(O::0)]next((L::2))
-		intro( new Next(o,l) );
+		// Join Task: IntroAtom Local NoPrior Mono [(O::0)]owner((C::1))
+		intro( new Owner(o,c) );
+		// Join Task: IntroAtom Local NoPrior NonMono [(O::0)]joined((O::0))
+		intro( new Joined(o,o) );
 		startOwner_rule_count++;
 		return false;
 		
@@ -1464,69 +1256,62 @@ public class P2pdirectory extends RewriteMachine {
 	
 	/*
 	**** 0 Join Ordering of Rule startMember ****
-	Rule Head Variables: (C::1), (L::0)
+	Rule Head Variables: (C::1), (M::0)
 	Rule Head Compre Binders: 
-	Active #H0 [(L::0)]startMember((C::1))
+	Active #H0 [(M::0)]startMember((C::1))
 	DeleteHead #H0
-	LetBind (O::2) ownerLoc(0)
-	IntroAtom Local NoPrior Mono [(L::0)]member()
-	IntroAtom Local NoPrior Mono [(L::0)]reqCode((C::1))
-	IntroAtom Local NoPrior Mono [(L::0)]ownerAt((O::2))
+	IntroAtom Local NoPrior Mono [(M::0)]member((C::1))
 	*/
 	protected boolean execute_startmember_join_ordering_1(StartMember act) {
 		
 		String c;
-		int l;
-		int o;
-		// Join Task: Active #H0 [(L::0)]startMember((C::1))
-		l = act.loc;
+		int m;
+		// Join Task: Active #H0 [(M::0)]startMember((C::1))
+		m = act.loc;
 		c = act.arg1;
 		// Join Task: DeleteHead #H0
 		// H0 is active and monotone, no delete required
-		// Join Task: LetBind (O::2) ownerLoc(0)
-		o = WifiDirectComingleDirectory.ownerLoc(0);
-		;
-		// Join Task: IntroAtom Local NoPrior Mono [(L::0)]member()
-		intro( new Member(l) );
-		// Join Task: IntroAtom Local NoPrior Mono [(L::0)]reqCode((C::1))
-		intro( new ReqCode(l,c) );
-		// Join Task: IntroAtom Local NoPrior Mono [(L::0)]ownerAt((O::2))
-		intro( new OwnerAt(l,o) );
+		// Join Task: IntroAtom Local NoPrior Mono [(M::0)]member((C::1))
+		intro( new Member(m,c) );
 		startMember_rule_count++;
 		return false;
 		
 	}
 	
 	/*
-	**** 0 Join Ordering of Rule quitO ****
-	Rule Head Variables: (Ps::1), (O::0)
-	Rule Head Compre Binders: (P::2)
+	**** 1 Join Ordering of Rule quitO ****
+	Rule Head Variables: (Ps::2), (C::1), (O::0)
+	Rule Head Compre Binders: (P::3)
 	Active #H0 [(O::0)]quit()
-	LookupAtom #H1 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-	LookupAll #H2 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::2))
-	CompreDomain #H2 (P::2) (Ps::1) [(O::0)]node((P::2))
+	LookupAtom #H1 6:1:hash<[+]owner(-)|.>  (O::0) [(O::0)]owner((C::1))
+	LookupAll #H2 4:0:hash<[+]joined(-)|.>  (O::0) [(O::0)]joined((P::3))
+	CompreDomain #H2 (P::3) (Ps::2) [(O::0)]joined((P::3))
 	DeleteHead #H0
-	IntroCompre Remote NoPrior Mono (P::3) (Ps::1) [(P::3)]ownerQuit()
+	DeleteHead #H1
+	DeleteHead #H2
+	IntroCompre Remote NoPrior Mono (P::4) (Ps::2) [(P::4)]ownerQuit()
 	*/
 	protected boolean execute_quit_join_ordering_1(Quit act) {
 		
 		int p;
+		String c;
 		int o;
 		SimpMultiset<Integer>  ps;
 		// Join Task: Active #H0 [(O::0)]quit()
 		o = act.loc;
-		// Join Task: LookupAtom #H1 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-		StoreIter<Owner> candidates_1 = owner_store_0.lookup_candidates(index0Owner(o));
-		Owner cand_1 = candidates_1.get_next();
+		// Join Task: LookupAtom #H1 6:1:hash<[+]owner(-)|.>  (O::0) [(O::0)]owner((C::1))
+		StoreIter<Owner> candidates_1 = owner_store_1.lookup_candidates(index1Owner(o));
+		Owner cand_1 = candidates_1.get_next_alive();
 		while(cand_1 != null) {
 			int o1;
 			o1 = cand_1.loc;
+			c = cand_1.arg1;
 			if (true) {
-				// Join Task: LookupAll #H2 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::2))
-				StoreIter<Node> candidates_2 = node_store_0.lookup_candidates(index0Node(o));
-				// Join Task: CompreDomain #H2 (P::2) (Ps::1) [(O::0)]node((P::2))
+				// Join Task: LookupAll #H2 4:0:hash<[+]joined(-)|.>  (O::0) [(O::0)]joined((P::3))
+				StoreIter<Joined> candidates_2 = joined_store_0.lookup_candidates(index0Joined(o));
+				// Join Task: CompreDomain #H2 (P::3) (Ps::2) [(O::0)]joined((P::3))
 				ps = new SimpMultiset<Integer> ();
-				Node cand_2_0 = candidates_2.get_next_alive();
+				Joined cand_2_0 = candidates_2.get_next_alive();
 				while(cand_2_0 != null) {
 					o = cand_2_0.loc;
 					p = cand_2_0.arg1;
@@ -1536,7 +1321,15 @@ public class P2pdirectory extends RewriteMachine {
 				candidates_2.init_iter();
 				// Join Task: DeleteHead #H0
 				// H0 is active and monotone, no delete required
-				// Join Task: IntroCompre Remote NoPrior Mono (P::3) (Ps::1) [(P::3)]ownerQuit()
+				// Join Task: DeleteHead #H1
+				owner_store_0.remove( cand_1 );
+				// Join Task: DeleteHead #H2
+				Joined cand_2_1 = candidates_2.get_next_alive();
+				while(cand_2_1 != null) {
+					joined_store_0.remove( cand_2_1 );
+					cand_2_1 = candidates_2.get_next_alive();
+				}
+				// Join Task: IntroCompre Remote NoPrior Mono (P::4) (Ps::2) [(P::4)]ownerQuit()
 				SimpMultiset<Integer>  comp_0 = ps;
 				for(int idx=0; idx<comp_0.size(); idx++) {
 					p = comp_0.get(idx);
@@ -1545,51 +1338,45 @@ public class P2pdirectory extends RewriteMachine {
 				quitO_rule_count++;
 				return false;
 			}
-			cand_1 = candidates_1.get_next();
+			cand_1 = candidates_1.get_next_alive();
 		}
 		return true;
 	}
 	
 	/*
 	**** 0 Join Ordering of Rule quitM ****
-	Rule Head Variables: (M::0), (O::1)
+	Rule Head Variables: (C::1), (M::0)
 	Rule Head Compre Binders: 
 	Active #H0 [(M::0)]quit()
-	LookupAtom #H1 6:0:hash<[+]member()|.>  (M::0) [(M::0)]member()
-	LookupAtom #H2 8:0:hash<[+]ownerAt(-)|.>  (M::0) [(M::0)]ownerAt((O::1))
+	LookupAtom #H1 5:0:hash<[+]member(-)|.>  (M::0) [(M::0)]member((C::1))
 	DeleteHead #H0
-	IntroAtom Remote NoPrior Mono [(O::1)]exit((M::0))
+	LetBind (O::2) ownerLoc(0)
+	IntroAtom Remote NoPrior Mono [(O::2)]exit((M::0))
 	*/
 	protected boolean execute_quit_join_ordering_2(Quit act) {
 		
+		String c;
 		int m;
 		int o;
 		// Join Task: Active #H0 [(M::0)]quit()
 		m = act.loc;
-		// Join Task: LookupAtom #H1 6:0:hash<[+]member()|.>  (M::0) [(M::0)]member()
+		// Join Task: LookupAtom #H1 5:0:hash<[+]member(-)|.>  (M::0) [(M::0)]member((C::1))
 		StoreIter<Member> candidates_1 = member_store_0.lookup_candidates(index0Member(m));
 		Member cand_1 = candidates_1.get_next();
 		while(cand_1 != null) {
 			int m1;
 			m1 = cand_1.loc;
+			c = cand_1.arg1;
 			if (true) {
-				// Join Task: LookupAtom #H2 8:0:hash<[+]ownerAt(-)|.>  (M::0) [(M::0)]ownerAt((O::1))
-				StoreIter<OwnerAt> candidates_2 = ownerat_store_0.lookup_candidates(index0OwnerAt(m));
-				OwnerAt cand_2 = candidates_2.get_next();
-				while(cand_2 != null) {
-					int m2;
-					m2 = cand_2.loc;
-					o = cand_2.arg1;
-					if (true) {
-						// Join Task: DeleteHead #H0
-						// H0 is active and monotone, no delete required
-						// Join Task: IntroAtom Remote NoPrior Mono [(O::1)]exit((M::0))
-						send( new Exit(o,m) ); 
-						quitM_rule_count++;
-						return false;
-					}
-					cand_2 = candidates_2.get_next();
-				}
+				// Join Task: DeleteHead #H0
+				// H0 is active and monotone, no delete required
+				// Join Task: LetBind (O::2) ownerLoc(0)
+				o = WifiDirectComingleDirectory.ownerLoc(0);
+				;
+				// Join Task: IntroAtom Remote NoPrior Mono [(O::2)]exit((M::0))
+				send( new Exit(o,m) ); 
+				quitM_rule_count++;
+				return false;
 			}
 			cand_1 = candidates_1.get_next();
 		}
@@ -1598,61 +1385,40 @@ public class P2pdirectory extends RewriteMachine {
 	
 	/*
 	**** 0 Join Ordering of Rule connect ****
-	Rule Head Variables: (C::2), (M::4), (L::0), (O::1), (N::3)
+	Rule Head Variables: (C::1), (M::0), (N::2)
 	Rule Head Compre Binders: 
-	Active #H0 [(L::0)]connect((N::3),(M::4))
-	LookupAtom #H1 6:0:hash<[+]member()|.>  (L::0) [(L::0)]member()
-	LookupAtom #H2 8:0:hash<[+]ownerAt(-)|.>  (L::0) [(L::0)]ownerAt((O::1))
-	LookupAtom #H3 10:0:hash<[+]reqCode(-)|.>  (L::0) [(L::0)]reqCode((C::2))
+	Active #H0 [(M::0)]connect((N::2))
+	LookupAtom #H1 5:0:hash<[+]member(-)|.>  (M::0) [(M::0)]member((C::1))
 	DeleteHead #H0
-	IntroAtom Remote NoPrior Mono [(O::1)]joinRequest((C::2),(N::3),(M::4))
+	LetBind (O::3) ownerLoc(0)
+	IntroAtom Remote NoPrior Mono [(O::3)]joinRequest((C::1),(N::2),(M::0))
 	*/
 	protected boolean execute_connect_join_ordering_1(Connect act) {
 		
 		String c;
-		String m;
-		int l;
+		int m;
 		int o;
 		String n;
-		// Join Task: Active #H0 [(L::0)]connect((N::3),(M::4))
-		l = act.loc;
+		// Join Task: Active #H0 [(M::0)]connect((N::2))
+		m = act.loc;
 		n = act.arg1;
-		m = act.arg2;
-		// Join Task: LookupAtom #H1 6:0:hash<[+]member()|.>  (L::0) [(L::0)]member()
-		StoreIter<Member> candidates_1 = member_store_0.lookup_candidates(index0Member(l));
+		// Join Task: LookupAtom #H1 5:0:hash<[+]member(-)|.>  (M::0) [(M::0)]member((C::1))
+		StoreIter<Member> candidates_1 = member_store_0.lookup_candidates(index0Member(m));
 		Member cand_1 = candidates_1.get_next();
 		while(cand_1 != null) {
-			int l1;
-			l1 = cand_1.loc;
+			int m1;
+			m1 = cand_1.loc;
+			c = cand_1.arg1;
 			if (true) {
-				// Join Task: LookupAtom #H2 8:0:hash<[+]ownerAt(-)|.>  (L::0) [(L::0)]ownerAt((O::1))
-				StoreIter<OwnerAt> candidates_2 = ownerat_store_0.lookup_candidates(index0OwnerAt(l));
-				OwnerAt cand_2 = candidates_2.get_next();
-				while(cand_2 != null) {
-					int l2;
-					l2 = cand_2.loc;
-					o = cand_2.arg1;
-					if (true) {
-						// Join Task: LookupAtom #H3 10:0:hash<[+]reqCode(-)|.>  (L::0) [(L::0)]reqCode((C::2))
-						StoreIter<ReqCode> candidates_3 = reqcode_store_0.lookup_candidates(index0ReqCode(l));
-						ReqCode cand_3 = candidates_3.get_next();
-						while(cand_3 != null) {
-							int l3;
-							l3 = cand_3.loc;
-							c = cand_3.arg1;
-							if (true) {
-								// Join Task: DeleteHead #H0
-								// H0 is active and monotone, no delete required
-								// Join Task: IntroAtom Remote NoPrior Mono [(O::1)]joinRequest((C::2),(N::3),(M::4))
-								send( new JoinRequest(o,c,n,m) ); 
-								connect_rule_count++;
-								return false;
-							}
-							cand_3 = candidates_3.get_next();
-						}
-					}
-					cand_2 = candidates_2.get_next();
-				}
+				// Join Task: DeleteHead #H0
+				// H0 is active and monotone, no delete required
+				// Join Task: LetBind (O::3) ownerLoc(0)
+				o = WifiDirectComingleDirectory.ownerLoc(0);
+				;
+				// Join Task: IntroAtom Remote NoPrior Mono [(O::3)]joinRequest((C::1),(N::2),(M::0))
+				send( new JoinRequest(o,c,n,m) ); 
+				connect_rule_count++;
+				return false;
 			}
 			cand_1 = candidates_1.get_next();
 		}
@@ -1660,168 +1426,111 @@ public class P2pdirectory extends RewriteMachine {
 	}
 	
 	/*
-	**** 4 Join Ordering of Rule join ****
-	Rule Head Variables: (Ps::2), (C::1), (M::7), (L::8), (O::0), (N::6), (Ms::4)
-	Rule Head Compre Binders: (P::3), (S::5)
-	Active #H0 [(O::0)]node((P::3))
-	LookupAtom #H1 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-	LookupAtom #H2 11:0:hash<[+]next(-)|.>  (O::0) [(O::0)]next((L::8))
-	LookupAtom #H3 10:0:hash<[+]reqCode(-)|.>  (O::0) [(O::0)]reqCode((C::1))
-	LookupAtom #H4 9:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(N::6),(M::7))
-	LookupAll #H5 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-	CompreDomain #H5 (P::3) (Ps::2) [(O::0)]node((P::3))
-	LookupAll #H6 5:0:hash<[+]seen(-)|.>  (O::0) [(O::0)]seen((S::5))
-	CompreDomain #H6 (S::5) (Ms::4) [(O::0)]seen((S::5))
-	CheckGuard not((M::7) in (Ms::4))
+	**** 2 Join Ordering of Rule join ****
+	Rule Head Variables: (C::1), (NewN::4), (Ms::2), (O::0), (NewM::5)
+	Rule Head Compre Binders: (M::3)
+	Active #H0 [(O::0)]joined((M::3))
+	LookupAtom #H1 6:1:hash<[+]owner(-)|.>  (O::0) [(O::0)]owner((C::1))
+	LookupAtom #H2 7:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(NewN::4),(NewM::5))
+	LookupAll #H3 4:0:hash<[+]joined(-)|.>  (O::0) [(O::0)]joined((M::3))
+	CompreDomain #H3 (M::3) (Ms::2) [(O::0)]joined((M::3))
+	CheckGuard not((NewM::5) in (Ms::2))
 	DeleteHead #H2
-	DeleteHead #H4
-	LetBind (U::9) nextLoc((L::8))
-	LetBind (IP::10) lookupIP((M::7))
-	LetBind (Ds::11) retrieveDir(0)
-	IntroAtom Remote NoPrior Mono [(L::8)]added((L::8),(IP::10),(N::6),(M::7))
-	IntroAtom Remote NoPrior Mono [(L::8)]you((L::8))
-	IntroAtom Remote NoPrior Mono [(O::0)]next((U::9))
-	IntroAtom Remote NoPrior NonMono [(O::0)]node((L::8))
-	IntroAtom Remote NoPrior NonMono [(O::0)]seen((M::7))
-	IntroCompre Remote NoPrior Mono (P::12) (Ps::2) [(P::12)]added((L::8),(IP::10),(N::6),(M::7))
-	IntroCompre Remote NoPrior Mono (Lr::15),(Ir::14),(Nr::13),(Mr::16) (Ds::11) [(L::8)]added((Lr::15),(Ir::14),(Nr::13),(Mr::16))
+	LetBind (NewIP::6) lookupIP((NewM::5))
+	LetBind (Ds::7) retrieveDir(0)
+	IntroAtom Remote NoPrior Mono [(NewM::5)]added((NewM::5),(NewIP::6),(NewN::4))
+	IntroAtom Remote NoPrior NonMono [(O::0)]joined((NewM::5))
+	IntroAtom Remote NoPrior Mono [(NewM::5)]connected()
+	IntroCompre Remote NoPrior Mono (M::8) (Ms::2) [(M::8)]added((NewM::5),(NewIP::6),(NewN::4))
+	IntroCompre Remote NoPrior Mono (M::10),(IP::9),(N::11) (Ds::7) [(NewM::5)]added((M::10),(IP::9),(N::11))
 	*/
-	protected boolean execute_node_join_ordering_1(Node act) {
+	protected boolean execute_joined_join_ordering_1(Joined act) {
 		
-		SimpMultiset<Integer>  ps;
+		String newip;
 		String c;
+		String newn;
+		int newm;
 		String ip;
-		String ir;
-		String m;
-		int l;
+		int m;
 		int o;
 		String n;
-		int p;
-		String s;
-		int lr;
-		SimpMultiset<String>  ms;
-		String mr;
-		int u;
-		String nr;
-		SimpMultiset<Tuple4<Integer,String,String,String> >  ds;
-		// Join Task: Active #H0 [(O::0)]node((P::3))
+		SimpMultiset<Integer>  ms;
+		SimpMultiset<Tuple3<Integer,String,String> >  ds;
+		// Join Task: Active #H0 [(O::0)]joined((M::3))
 		if (act.is_alive()) {
 			o = act.loc;
-			p = act.arg1;
-			// Join Task: LookupAtom #H1 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-			StoreIter<Owner> candidates_1 = owner_store_0.lookup_candidates(index0Owner(o));
-			Owner cand_1 = candidates_1.get_next();
+			m = act.arg1;
+			// Join Task: LookupAtom #H1 6:1:hash<[+]owner(-)|.>  (O::0) [(O::0)]owner((C::1))
+			StoreIter<Owner> candidates_1 = owner_store_1.lookup_candidates(index1Owner(o));
+			Owner cand_1 = candidates_1.get_next_alive();
 			while(cand_1 != null) {
 				int o1;
 				o1 = cand_1.loc;
+				c = cand_1.arg1;
 				if (true) {
-					// Join Task: LookupAtom #H2 11:0:hash<[+]next(-)|.>  (O::0) [(O::0)]next((L::8))
-					StoreIter<Next> candidates_2 = next_store_0.lookup_candidates(index0Next(o));
-					Next cand_2 = candidates_2.get_next_alive();
+					// Join Task: LookupAtom #H2 7:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(NewN::4),(NewM::5))
+					StoreIter<JoinRequest> candidates_2 = joinrequest_store_0.lookup_candidates(index0JoinRequest(o,c));
+					JoinRequest cand_2 = candidates_2.get_next_alive();
 					while(cand_2 != null) {
 						int o2;
+						String c2;
 						o2 = cand_2.loc;
-						l = cand_2.arg1;
-						if (true) {
-							// Join Task: LookupAtom #H3 10:0:hash<[+]reqCode(-)|.>  (O::0) [(O::0)]reqCode((C::1))
-							StoreIter<ReqCode> candidates_3 = reqcode_store_0.lookup_candidates(index0ReqCode(o));
-							ReqCode cand_3 = candidates_3.get_next();
-							while(cand_3 != null) {
-								int o3;
-								o3 = cand_3.loc;
-								c = cand_3.arg1;
-								if (true) {
-									// Join Task: LookupAtom #H4 9:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(N::6),(M::7))
-									StoreIter<JoinRequest> candidates_4 = joinrequest_store_0.lookup_candidates(index0JoinRequest(o,c));
-									JoinRequest cand_4 = candidates_4.get_next_alive();
-									while(cand_4 != null) {
-										int o4;
-										String c4;
-										o4 = cand_4.loc;
-										c4 = cand_4.arg1;
-										n = cand_4.arg2;
-										m = cand_4.arg3;
-										if (Equality.is_eq(o,o4) && Equality.is_eq(c,c4)) {
-											// Join Task: LookupAll #H5 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-											StoreIter<Node> candidates_5 = node_store_0.lookup_candidates(index0Node(o));
-											// Join Task: CompreDomain #H5 (P::3) (Ps::2) [(O::0)]node((P::3))
-											ps = new SimpMultiset<Integer> ();
-											Node cand_5_0 = candidates_5.get_next_alive();
-											while(cand_5_0 != null) {
-												o = cand_5_0.loc;
-												p = cand_5_0.arg1;
-												ps.add( p );
-												cand_5_0 = candidates_5.get_next_alive();
-											}
-											candidates_5.init_iter();
-											// Join Task: LookupAll #H6 5:0:hash<[+]seen(-)|.>  (O::0) [(O::0)]seen((S::5))
-											StoreIter<Seen> candidates_6 = seen_store_0.lookup_candidates(index0Seen(o));
-											// Join Task: CompreDomain #H6 (S::5) (Ms::4) [(O::0)]seen((S::5))
-											ms = new SimpMultiset<String> ();
-											Seen cand_6_0 = candidates_6.get_next();
-											while(cand_6_0 != null) {
-												o = cand_6_0.loc;
-												s = cand_6_0.arg1;
-												ms.add( s );
-												cand_6_0 = candidates_6.get_next();
-											}
-											candidates_6.init_iter();
-											// Join Task: CheckGuard not((M::7) in (Ms::4))
-											if (ExtLib.not(ExtLib.in(m,ms))) {
-												// Join Task: DeleteHead #H2
-												next_store_0.remove( cand_2 );
-												// Join Task: DeleteHead #H4
-												joinrequest_store_0.remove( cand_4 );
-												// Join Task: LetBind (U::9) nextLoc((L::8))
-												u = WifiDirectComingleDirectory.nextLoc(l);
-												;
-												// Join Task: LetBind (IP::10) lookupIP((M::7))
-												ip = WifiDirectComingleDirectory.lookupIP(m);
-												;
-												// Join Task: LetBind (Ds::11) retrieveDir(0)
-												ds = WifiDirectComingleDirectory.retrieveDir(0);
-												;
-												// Join Task: IntroAtom Remote NoPrior Mono [(L::8)]added((L::8),(IP::10),(N::6),(M::7))
-												send( new Added(l,l,ip,n,m) ); 
-												// Join Task: IntroAtom Remote NoPrior Mono [(L::8)]you((L::8))
-												send( new You(l,l) ); 
-												// Join Task: IntroAtom Remote NoPrior Mono [(O::0)]next((U::9))
-												intro( new Next(o,u) );
-												// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]node((L::8))
-												intro( new Node(o,l) );
-												// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]seen((M::7))
-												intro( new Seen(o,m) );
-												// Join Task: IntroCompre Remote NoPrior Mono (P::12) (Ps::2) [(P::12)]added((L::8),(IP::10),(N::6),(M::7))
-												SimpMultiset<Integer>  comp_0 = ps;
-												for(int idx=0; idx<comp_0.size(); idx++) {
-													p = comp_0.get(idx);
-													send( new Added(p,l,ip,n,m) ); 
-												}
-												// Join Task: IntroCompre Remote NoPrior Mono (Lr::15),(Ir::14),(Nr::13),(Mr::16) (Ds::11) [(L::8)]added((Lr::15),(Ir::14),(Nr::13),(Mr::16))
-												SimpMultiset<Tuple4<Integer,String,String,String> >  comp_1 = ds;
-												for(int idx=0; idx<comp_1.size(); idx++) {
-													Tuple4<Integer,String,String,String>  tup0;
-													tup0 = comp_1.get(idx);
-													lr = tup0.t1;
-													ir = tup0.t2;
-													nr = tup0.t3;
-													mr = tup0.t4;
-													send( new Added(l,lr,ir,nr,mr) ); 
-												}
-												join_rule_count++;
-											}
-										} else {
-										}
-										cand_4 = candidates_4.get_next_alive();
-									}
-								}
-								cand_3 = candidates_3.get_next();
+						c2 = cand_2.arg1;
+						newn = cand_2.arg2;
+						newm = cand_2.arg3;
+						if (Equality.is_eq(o,o2) && Equality.is_eq(c,c2)) {
+							// Join Task: LookupAll #H3 4:0:hash<[+]joined(-)|.>  (O::0) [(O::0)]joined((M::3))
+							StoreIter<Joined> candidates_3 = joined_store_0.lookup_candidates(index0Joined(o));
+							// Join Task: CompreDomain #H3 (M::3) (Ms::2) [(O::0)]joined((M::3))
+							ms = new SimpMultiset<Integer> ();
+							Joined cand_3_0 = candidates_3.get_next_alive();
+							while(cand_3_0 != null) {
+								o = cand_3_0.loc;
+								m = cand_3_0.arg1;
+								ms.add( m );
+								cand_3_0 = candidates_3.get_next_alive();
 							}
+							candidates_3.init_iter();
+							// Join Task: CheckGuard not((NewM::5) in (Ms::2))
+							if (ExtLib.not(ExtLib.in(newm,ms))) {
+								// Join Task: DeleteHead #H2
+								joinrequest_store_0.remove( cand_2 );
+								// Join Task: LetBind (NewIP::6) lookupIP((NewM::5))
+								newip = WifiDirectComingleDirectory.lookupIP(newm);
+								;
+								// Join Task: LetBind (Ds::7) retrieveDir(0)
+								ds = WifiDirectComingleDirectory.retrieveDir(0);
+								;
+								// Join Task: IntroAtom Remote NoPrior Mono [(NewM::5)]added((NewM::5),(NewIP::6),(NewN::4))
+								send( new Added(newm,newm,newip,newn) ); 
+								// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]joined((NewM::5))
+								intro( new Joined(o,newm) );
+								// Join Task: IntroAtom Remote NoPrior Mono [(NewM::5)]connected()
+								send( new Connected(newm) ); 
+								// Join Task: IntroCompre Remote NoPrior Mono (M::8) (Ms::2) [(M::8)]added((NewM::5),(NewIP::6),(NewN::4))
+								SimpMultiset<Integer>  comp_0 = ms;
+								for(int idx=0; idx<comp_0.size(); idx++) {
+									m = comp_0.get(idx);
+									send( new Added(m,newm,newip,newn) ); 
+								}
+								// Join Task: IntroCompre Remote NoPrior Mono (M::10),(IP::9),(N::11) (Ds::7) [(NewM::5)]added((M::10),(IP::9),(N::11))
+								SimpMultiset<Tuple3<Integer,String,String> >  comp_1 = ds;
+								for(int idx=0; idx<comp_1.size(); idx++) {
+									Tuple3<Integer,String,String>  tup0;
+									tup0 = comp_1.get(idx);
+									m = tup0.t1;
+									ip = tup0.t2;
+									n = tup0.t3;
+									send( new Added(newm,m,ip,n) ); 
+								}
+								join_rule_count++;
+							}
+						} else {
 						}
 						cand_2 = candidates_2.get_next_alive();
 					}
 				}
-				cand_1 = candidates_1.get_next();
+				cand_1 = candidates_1.get_next_alive();
 			}
 		}
 		return true;
@@ -1829,22 +1538,25 @@ public class P2pdirectory extends RewriteMachine {
 	
 	/*
 	**** 2 Join Ordering of Rule quitO ****
-	Rule Head Variables: (Ps::1), (O::0)
-	Rule Head Compre Binders: (P::2)
-	Active #H0 [(O::0)]node((P::2))
+	Rule Head Variables: (Ps::2), (C::1), (O::0)
+	Rule Head Compre Binders: (P::3)
+	Active #H0 [(O::0)]joined((P::3))
 	LookupAtom #H1 2:0:hash<[+]quit()|.>  (O::0) [(O::0)]quit()
-	LookupAtom #H2 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-	LookupAll #H3 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::2))
-	CompreDomain #H3 (P::2) (Ps::1) [(O::0)]node((P::2))
+	LookupAtom #H2 6:1:hash<[+]owner(-)|.>  (O::0) [(O::0)]owner((C::1))
+	LookupAll #H3 4:0:hash<[+]joined(-)|.>  (O::0) [(O::0)]joined((P::3))
+	CompreDomain #H3 (P::3) (Ps::2) [(O::0)]joined((P::3))
 	DeleteHead #H1
-	IntroCompre Remote NoPrior Mono (P::3) (Ps::1) [(P::3)]ownerQuit()
+	DeleteHead #H2
+	DeleteHead #H3
+	IntroCompre Remote NoPrior Mono (P::4) (Ps::2) [(P::4)]ownerQuit()
 	*/
-	protected boolean execute_node_join_ordering_2(Node act) {
+	protected boolean execute_joined_join_ordering_2(Joined act) {
 		
 		int p;
+		String c;
 		int o;
 		SimpMultiset<Integer>  ps;
-		// Join Task: Active #H0 [(O::0)]node((P::2))
+		// Join Task: Active #H0 [(O::0)]joined((P::3))
 		if (act.is_alive()) {
 			o = act.loc;
 			p = act.arg1;
@@ -1855,18 +1567,19 @@ public class P2pdirectory extends RewriteMachine {
 				int o1;
 				o1 = cand_1.loc;
 				if (true) {
-					// Join Task: LookupAtom #H2 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-					StoreIter<Owner> candidates_2 = owner_store_0.lookup_candidates(index0Owner(o));
-					Owner cand_2 = candidates_2.get_next();
+					// Join Task: LookupAtom #H2 6:1:hash<[+]owner(-)|.>  (O::0) [(O::0)]owner((C::1))
+					StoreIter<Owner> candidates_2 = owner_store_1.lookup_candidates(index1Owner(o));
+					Owner cand_2 = candidates_2.get_next_alive();
 					while(cand_2 != null) {
 						int o2;
 						o2 = cand_2.loc;
+						c = cand_2.arg1;
 						if (true) {
-							// Join Task: LookupAll #H3 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::2))
-							StoreIter<Node> candidates_3 = node_store_0.lookup_candidates(index0Node(o));
-							// Join Task: CompreDomain #H3 (P::2) (Ps::1) [(O::0)]node((P::2))
+							// Join Task: LookupAll #H3 4:0:hash<[+]joined(-)|.>  (O::0) [(O::0)]joined((P::3))
+							StoreIter<Joined> candidates_3 = joined_store_0.lookup_candidates(index0Joined(o));
+							// Join Task: CompreDomain #H3 (P::3) (Ps::2) [(O::0)]joined((P::3))
 							ps = new SimpMultiset<Integer> ();
-							Node cand_3_0 = candidates_3.get_next_alive();
+							Joined cand_3_0 = candidates_3.get_next_alive();
 							while(cand_3_0 != null) {
 								o = cand_3_0.loc;
 								p = cand_3_0.arg1;
@@ -1876,15 +1589,24 @@ public class P2pdirectory extends RewriteMachine {
 							candidates_3.init_iter();
 							// Join Task: DeleteHead #H1
 							quit_store_0.remove( cand_1 );
-							// Join Task: IntroCompre Remote NoPrior Mono (P::3) (Ps::1) [(P::3)]ownerQuit()
+							// Join Task: DeleteHead #H2
+							owner_store_0.remove( cand_2 );
+							// Join Task: DeleteHead #H3
+							Joined cand_3_1 = candidates_3.get_next_alive();
+							while(cand_3_1 != null) {
+								joined_store_0.remove( cand_3_1 );
+								cand_3_1 = candidates_3.get_next_alive();
+							}
+							// Join Task: IntroCompre Remote NoPrior Mono (P::4) (Ps::2) [(P::4)]ownerQuit()
 							SimpMultiset<Integer>  comp_0 = ps;
 							for(int idx=0; idx<comp_0.size(); idx++) {
 								p = comp_0.get(idx);
 								send( new OwnerQuit(p) ); 
 							}
 							quitO_rule_count++;
+							return false;
 						}
-						cand_2 = candidates_2.get_next();
+						cand_2 = candidates_2.get_next_alive();
 					}
 				}
 				cand_1 = candidates_1.get_next_alive();
@@ -1895,76 +1617,89 @@ public class P2pdirectory extends RewriteMachine {
 	
 	/*
 	**** 1 Join Ordering of Rule exit ****
-	Rule Head Variables: (Ps::2), (M::1), (O::0)
-	Rule Head Compre Binders: (P::3)
-	Active #H0 [(O::0)]node((P::3))
-	LookupAtom #H1 12:0:hash<[+]exit(-)|.>  (O::0) [(O::0)]exit((M::1))
-	LookupAll #H2 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-	CompreDomain #H2 (P::3) (Ps::2) [(O::0)]node((P::3))
+	Rule Head Variables: (Ms::0), (O::2), (N::3)
+	Rule Head Compre Binders: (M::1)
+	Active #H0 [(O::2)]joined((N::3))
+	LookupAtom #H1 8:0:hash<[+]exit(+)|.>  (O::2),(N::3) [(O::2)]exit((N::3))
+	LookupAll #H2 4:0:hash<[+]joined(-)|.>  (O::2) [(O::2)]joined((M::1))
+	FilterHead #H2 #H0
+	FilterGuard #H2 not((M::1) == (N::3))
+	CompreDomain #H2 (M::1) (Ms::0) [(O::2)]joined((M::1))
+	DeleteHead #H0
 	DeleteHead #H1
-	DeleteHead #H2
-	LetBind (Bs::4) diff(((Ps::2),{(M::1)}))
-	IntroCompre Remote NoPrior Mono (B::5) (Bs::4) [(B::5)]removed((M::1))
-	IntroCompre Remote NoPrior NonMono (B::6) (Bs::4) [(O::0)]node((B::6))
+	IntroAtom Remote NoPrior Mono [(N::3)]deleteDir()
+	IntroCompre Remote NoPrior Mono (M::4) (Ms::0) [(M::4)]removed((N::3))
 	*/
-	protected boolean execute_node_join_ordering_3(Node act) {
+	protected boolean execute_joined_join_ordering_3(Joined act) {
 		
-		SimpMultiset<Integer>  ps;
-		int b;
 		int m;
+		SimpMultiset<Integer>  ms;
 		int o;
-		int p;
-		SimpMultiset<Integer>  bs;
-		// Join Task: Active #H0 [(O::0)]node((P::3))
+		int n;
+		// Join Task: Active #H0 [(O::2)]joined((N::3))
 		if (act.is_alive()) {
 			o = act.loc;
-			p = act.arg1;
-			// Join Task: LookupAtom #H1 12:0:hash<[+]exit(-)|.>  (O::0) [(O::0)]exit((M::1))
-			StoreIter<Exit> candidates_1 = exit_store_0.lookup_candidates(index0Exit(o));
+			n = act.arg1;
+			// Join Task: LookupAtom #H1 8:0:hash<[+]exit(+)|.>  (O::2),(N::3) [(O::2)]exit((N::3))
+			StoreIter<Exit> candidates_1 = exit_store_0.lookup_candidates(index0Exit(o,n));
 			Exit cand_1 = candidates_1.get_next_alive();
 			while(cand_1 != null) {
 				int o1;
+				int n1;
 				o1 = cand_1.loc;
-				m = cand_1.arg1;
-				if (true) {
-					// Join Task: LookupAll #H2 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-					StoreIter<Node> candidates_2 = node_store_0.lookup_candidates(index0Node(o));
-					// Join Task: CompreDomain #H2 (P::3) (Ps::2) [(O::0)]node((P::3))
-					ps = new SimpMultiset<Integer> ();
-					Node cand_2_0 = candidates_2.get_next_alive();
+				n1 = cand_1.arg1;
+				if (Equality.is_eq(o,o1) && Equality.is_eq(n,n1)) {
+					// Join Task: LookupAll #H2 4:0:hash<[+]joined(-)|.>  (O::2) [(O::2)]joined((M::1))
+					StoreIter<Joined> candidates_2 = joined_store_0.lookup_candidates(index0Joined(o));
+					// Join Task: FilterHead #H2 #H0
+					ListStoreIter<Joined> candidates_2_0 = new ListStoreIter<Joined>();
+					Joined cand_2_0 = candidates_2.get_next_alive();
 					while(cand_2_0 != null) {
 						o = cand_2_0.loc;
-						p = cand_2_0.arg1;
-						ps.add( p );
+						m = cand_2_0.arg1;
+						if ((cand_2_0).identity() != (act).identity() ) {
+							candidates_2_0.add( cand_2_0 );
+						}
 						cand_2_0 = candidates_2.get_next_alive();
 					}
-					candidates_2.init_iter();
+					candidates_2_0.init_iter();
+					// Join Task: FilterGuard #H2 not((M::1) == (N::3))
+					ListStoreIter<Joined> candidates_2_0_1 = new ListStoreIter<Joined>();
+					Joined cand_2_1 = candidates_2_0.get_next_alive();
+					while(cand_2_1 != null) {
+						o = cand_2_1.loc;
+						m = cand_2_1.arg1;
+						if (ExtLib.not(Equality.is_eq(m,n))) {
+							candidates_2_0_1.add( cand_2_1 );
+						}
+						cand_2_1 = candidates_2_0.get_next_alive();
+					}
+					candidates_2_0_1.init_iter();
+					// Join Task: CompreDomain #H2 (M::1) (Ms::0) [(O::2)]joined((M::1))
+					ms = new SimpMultiset<Integer> ();
+					Joined cand_2_2 = candidates_2_0_1.get_next_alive();
+					while(cand_2_2 != null) {
+						o = cand_2_2.loc;
+						m = cand_2_2.arg1;
+						ms.add( m );
+						cand_2_2 = candidates_2_0_1.get_next_alive();
+					}
+					candidates_2_0_1.init_iter();
+					// Join Task: DeleteHead #H0
+					joined_store_0.remove( act );
 					// Join Task: DeleteHead #H1
 					exit_store_0.remove( cand_1 );
-					// Join Task: DeleteHead #H2
-					Node cand_2_1 = candidates_2.get_next_alive();
-					while(cand_2_1 != null) {
-						node_store_0.remove( cand_2_1 );
-						cand_2_1 = candidates_2.get_next_alive();
-					}
-					// Join Task: LetBind (Bs::4) diff(((Ps::2),{(M::1)}))
-					Integer[] temp0 = { m };
-					bs = ExtLib.diff(ps,Misc.to_mset(temp0));
-					;
-					// Join Task: IntroCompre Remote NoPrior Mono (B::5) (Bs::4) [(B::5)]removed((M::1))
-					SimpMultiset<Integer>  comp_0 = bs;
+					// Join Task: IntroAtom Remote NoPrior Mono [(N::3)]deleteDir()
+					send( new DeleteDir(n) ); 
+					// Join Task: IntroCompre Remote NoPrior Mono (M::4) (Ms::0) [(M::4)]removed((N::3))
+					SimpMultiset<Integer>  comp_0 = ms;
 					for(int idx=0; idx<comp_0.size(); idx++) {
-						b = comp_0.get(idx);
-						send( new Removed(b,m) ); 
-					}
-					// Join Task: IntroCompre Remote NoPrior NonMono (B::6) (Bs::4) [(O::0)]node((B::6))
-					SimpMultiset<Integer>  comp_1 = bs;
-					for(int idx=0; idx<comp_1.size(); idx++) {
-						b = comp_1.get(idx);
-						intro( new Node(o,b) );
+						m = comp_0.get(idx);
+						send( new Removed(m,n) ); 
 					}
 					exit_rule_count++;
 					return false;
+				} else {
 				}
 				cand_1 = candidates_1.get_next_alive();
 			}
@@ -1973,168 +1708,107 @@ public class P2pdirectory extends RewriteMachine {
 	}
 	
 	/*
-	**** 5 Join Ordering of Rule join ****
-	Rule Head Variables: (Ps::2), (C::1), (M::7), (L::8), (O::0), (N::6), (Ms::4)
-	Rule Head Compre Binders: (P::3), (S::5)
-	Active #H0 [(O::0)]seen((S::5))
-	LookupAtom #H1 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-	LookupAtom #H2 11:0:hash<[+]next(-)|.>  (O::0) [(O::0)]next((L::8))
-	LookupAtom #H3 10:0:hash<[+]reqCode(-)|.>  (O::0) [(O::0)]reqCode((C::1))
-	LookupAtom #H4 9:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(N::6),(M::7))
-	LookupAll #H5 5:0:hash<[+]seen(-)|.>  (O::0) [(O::0)]seen((S::5))
-	CompreDomain #H5 (S::5) (Ms::4) [(O::0)]seen((S::5))
-	CheckGuard not((M::7) in (Ms::4))
-	LookupAll #H6 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-	CompreDomain #H6 (P::3) (Ps::2) [(O::0)]node((P::3))
+	**** 2 Join Ordering of Rule exit ****
+	Rule Head Variables: (Ms::0), (O::2), (N::3)
+	Rule Head Compre Binders: (M::1)
+	Active #H0 [(O::2)]joined((M::1))
+	LookupAtom #H1 8:1:hash<[+]exit(-)|.>  (O::2) [(O::2)]exit((N::3))
+	CheckGuard not((M::1) == (N::3))
+	LookupAtom #H2 4:1:hash<[+]joined(+)|.>  (O::2),(N::3) [(O::2)]joined((N::3))
+	LookupAll #H3 4:0:hash<[+]joined(-)|.>  (O::2) [(O::2)]joined((M::1))
+	FilterHead #H3 #H2
+	FilterGuard #H3 not((M::1) == (N::3))
+	CompreDomain #H3 (M::1) (Ms::0) [(O::2)]joined((M::1))
+	DeleteHead #H1
 	DeleteHead #H2
-	DeleteHead #H4
-	LetBind (U::9) nextLoc((L::8))
-	LetBind (IP::10) lookupIP((M::7))
-	LetBind (Ds::11) retrieveDir(0)
-	IntroAtom Remote NoPrior Mono [(L::8)]added((L::8),(IP::10),(N::6),(M::7))
-	IntroAtom Remote NoPrior Mono [(L::8)]you((L::8))
-	IntroAtom Remote NoPrior Mono [(O::0)]next((U::9))
-	IntroAtom Remote NoPrior NonMono [(O::0)]node((L::8))
-	IntroAtom Remote NoPrior NonMono [(O::0)]seen((M::7))
-	IntroCompre Remote NoPrior Mono (P::12) (Ps::2) [(P::12)]added((L::8),(IP::10),(N::6),(M::7))
-	IntroCompre Remote NoPrior Mono (Lr::15),(Ir::14),(Nr::13),(Mr::16) (Ds::11) [(L::8)]added((Lr::15),(Ir::14),(Nr::13),(Mr::16))
+	IntroAtom Remote NoPrior Mono [(N::3)]deleteDir()
+	IntroCompre Remote NoPrior Mono (M::4) (Ms::0) [(M::4)]removed((N::3))
 	*/
-	protected boolean execute_seen_join_ordering_1(Seen act) {
+	protected boolean execute_joined_join_ordering_4(Joined act) {
 		
-		SimpMultiset<Integer>  ps;
-		String c;
-		String ip;
-		String ir;
-		String m;
-		int l;
+		int m;
+		SimpMultiset<Integer>  ms;
 		int o;
-		String n;
-		int p;
-		String s;
-		int lr;
-		SimpMultiset<String>  ms;
-		String mr;
-		int u;
-		String nr;
-		SimpMultiset<Tuple4<Integer,String,String,String> >  ds;
-		// Join Task: Active #H0 [(O::0)]seen((S::5))
+		int n;
+		// Join Task: Active #H0 [(O::2)]joined((M::1))
 		if (act.is_alive()) {
 			o = act.loc;
-			s = act.arg1;
-			// Join Task: LookupAtom #H1 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-			StoreIter<Owner> candidates_1 = owner_store_0.lookup_candidates(index0Owner(o));
-			Owner cand_1 = candidates_1.get_next();
+			m = act.arg1;
+			// Join Task: LookupAtom #H1 8:1:hash<[+]exit(-)|.>  (O::2) [(O::2)]exit((N::3))
+			StoreIter<Exit> candidates_1 = exit_store_1.lookup_candidates(index1Exit(o));
+			Exit cand_1 = candidates_1.get_next_alive();
 			while(cand_1 != null) {
 				int o1;
 				o1 = cand_1.loc;
+				n = cand_1.arg1;
 				if (true) {
-					// Join Task: LookupAtom #H2 11:0:hash<[+]next(-)|.>  (O::0) [(O::0)]next((L::8))
-					StoreIter<Next> candidates_2 = next_store_0.lookup_candidates(index0Next(o));
-					Next cand_2 = candidates_2.get_next_alive();
-					while(cand_2 != null) {
-						int o2;
-						o2 = cand_2.loc;
-						l = cand_2.arg1;
-						if (true) {
-							// Join Task: LookupAtom #H3 10:0:hash<[+]reqCode(-)|.>  (O::0) [(O::0)]reqCode((C::1))
-							StoreIter<ReqCode> candidates_3 = reqcode_store_0.lookup_candidates(index0ReqCode(o));
-							ReqCode cand_3 = candidates_3.get_next();
-							while(cand_3 != null) {
-								int o3;
-								o3 = cand_3.loc;
-								c = cand_3.arg1;
-								if (true) {
-									// Join Task: LookupAtom #H4 9:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(N::6),(M::7))
-									StoreIter<JoinRequest> candidates_4 = joinrequest_store_0.lookup_candidates(index0JoinRequest(o,c));
-									JoinRequest cand_4 = candidates_4.get_next_alive();
-									while(cand_4 != null) {
-										int o4;
-										String c4;
-										o4 = cand_4.loc;
-										c4 = cand_4.arg1;
-										n = cand_4.arg2;
-										m = cand_4.arg3;
-										if (Equality.is_eq(o,o4) && Equality.is_eq(c,c4)) {
-											// Join Task: LookupAll #H5 5:0:hash<[+]seen(-)|.>  (O::0) [(O::0)]seen((S::5))
-											StoreIter<Seen> candidates_5 = seen_store_0.lookup_candidates(index0Seen(o));
-											// Join Task: CompreDomain #H5 (S::5) (Ms::4) [(O::0)]seen((S::5))
-											ms = new SimpMultiset<String> ();
-											Seen cand_5_0 = candidates_5.get_next();
-											while(cand_5_0 != null) {
-												o = cand_5_0.loc;
-												s = cand_5_0.arg1;
-												ms.add( s );
-												cand_5_0 = candidates_5.get_next();
-											}
-											candidates_5.init_iter();
-											// Join Task: CheckGuard not((M::7) in (Ms::4))
-											if (ExtLib.not(ExtLib.in(m,ms))) {
-												// Join Task: LookupAll #H6 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-												StoreIter<Node> candidates_6 = node_store_0.lookup_candidates(index0Node(o));
-												// Join Task: CompreDomain #H6 (P::3) (Ps::2) [(O::0)]node((P::3))
-												ps = new SimpMultiset<Integer> ();
-												Node cand_6_0 = candidates_6.get_next_alive();
-												while(cand_6_0 != null) {
-													o = cand_6_0.loc;
-													p = cand_6_0.arg1;
-													ps.add( p );
-													cand_6_0 = candidates_6.get_next_alive();
-												}
-												candidates_6.init_iter();
-												// Join Task: DeleteHead #H2
-												next_store_0.remove( cand_2 );
-												// Join Task: DeleteHead #H4
-												joinrequest_store_0.remove( cand_4 );
-												// Join Task: LetBind (U::9) nextLoc((L::8))
-												u = WifiDirectComingleDirectory.nextLoc(l);
-												;
-												// Join Task: LetBind (IP::10) lookupIP((M::7))
-												ip = WifiDirectComingleDirectory.lookupIP(m);
-												;
-												// Join Task: LetBind (Ds::11) retrieveDir(0)
-												ds = WifiDirectComingleDirectory.retrieveDir(0);
-												;
-												// Join Task: IntroAtom Remote NoPrior Mono [(L::8)]added((L::8),(IP::10),(N::6),(M::7))
-												send( new Added(l,l,ip,n,m) ); 
-												// Join Task: IntroAtom Remote NoPrior Mono [(L::8)]you((L::8))
-												send( new You(l,l) ); 
-												// Join Task: IntroAtom Remote NoPrior Mono [(O::0)]next((U::9))
-												intro( new Next(o,u) );
-												// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]node((L::8))
-												intro( new Node(o,l) );
-												// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]seen((M::7))
-												intro( new Seen(o,m) );
-												// Join Task: IntroCompre Remote NoPrior Mono (P::12) (Ps::2) [(P::12)]added((L::8),(IP::10),(N::6),(M::7))
-												SimpMultiset<Integer>  comp_0 = ps;
-												for(int idx=0; idx<comp_0.size(); idx++) {
-													p = comp_0.get(idx);
-													send( new Added(p,l,ip,n,m) ); 
-												}
-												// Join Task: IntroCompre Remote NoPrior Mono (Lr::15),(Ir::14),(Nr::13),(Mr::16) (Ds::11) [(L::8)]added((Lr::15),(Ir::14),(Nr::13),(Mr::16))
-												SimpMultiset<Tuple4<Integer,String,String,String> >  comp_1 = ds;
-												for(int idx=0; idx<comp_1.size(); idx++) {
-													Tuple4<Integer,String,String,String>  tup1;
-													tup1 = comp_1.get(idx);
-													lr = tup1.t1;
-													ir = tup1.t2;
-													nr = tup1.t3;
-													mr = tup1.t4;
-													send( new Added(l,lr,ir,nr,mr) ); 
-												}
-												join_rule_count++;
-											}
-										} else {
-										}
-										cand_4 = candidates_4.get_next_alive();
+					// Join Task: CheckGuard not((M::1) == (N::3))
+					if (ExtLib.not(Equality.is_eq(m,n))) {
+						// Join Task: LookupAtom #H2 4:1:hash<[+]joined(+)|.>  (O::2),(N::3) [(O::2)]joined((N::3))
+						StoreIter<Joined> candidates_2 = joined_store_1.lookup_candidates(index1Joined(o,n));
+						Joined cand_2 = candidates_2.get_next_alive();
+						while(cand_2 != null) {
+							int o2;
+							int n2;
+							o2 = cand_2.loc;
+							n2 = cand_2.arg1;
+							if (Equality.is_eq(o,o2) && Equality.is_eq(n,n2)) {
+								// Join Task: LookupAll #H3 4:0:hash<[+]joined(-)|.>  (O::2) [(O::2)]joined((M::1))
+								StoreIter<Joined> candidates_3 = joined_store_0.lookup_candidates(index0Joined(o));
+								// Join Task: FilterHead #H3 #H2
+								ListStoreIter<Joined> candidates_3_0 = new ListStoreIter<Joined>();
+								Joined cand_3_0 = candidates_3.get_next_alive();
+								while(cand_3_0 != null) {
+									o = cand_3_0.loc;
+									m = cand_3_0.arg1;
+									if ((cand_3_0).identity() != (cand_2).identity() ) {
+										candidates_3_0.add( cand_3_0 );
 									}
+									cand_3_0 = candidates_3.get_next_alive();
 								}
-								cand_3 = candidates_3.get_next();
+								candidates_3_0.init_iter();
+								// Join Task: FilterGuard #H3 not((M::1) == (N::3))
+								ListStoreIter<Joined> candidates_3_0_1 = new ListStoreIter<Joined>();
+								Joined cand_3_1 = candidates_3_0.get_next_alive();
+								while(cand_3_1 != null) {
+									o = cand_3_1.loc;
+									m = cand_3_1.arg1;
+									if (ExtLib.not(Equality.is_eq(m,n))) {
+										candidates_3_0_1.add( cand_3_1 );
+									}
+									cand_3_1 = candidates_3_0.get_next_alive();
+								}
+								candidates_3_0_1.init_iter();
+								// Join Task: CompreDomain #H3 (M::1) (Ms::0) [(O::2)]joined((M::1))
+								ms = new SimpMultiset<Integer> ();
+								Joined cand_3_2 = candidates_3_0_1.get_next_alive();
+								while(cand_3_2 != null) {
+									o = cand_3_2.loc;
+									m = cand_3_2.arg1;
+									ms.add( m );
+									cand_3_2 = candidates_3_0_1.get_next_alive();
+								}
+								candidates_3_0_1.init_iter();
+								// Join Task: DeleteHead #H1
+								exit_store_0.remove( cand_1 );
+								// Join Task: DeleteHead #H2
+								joined_store_0.remove( cand_2 );
+								// Join Task: IntroAtom Remote NoPrior Mono [(N::3)]deleteDir()
+								send( new DeleteDir(n) ); 
+								// Join Task: IntroCompre Remote NoPrior Mono (M::4) (Ms::0) [(M::4)]removed((N::3))
+								SimpMultiset<Integer>  comp_0 = ms;
+								for(int idx=0; idx<comp_0.size(); idx++) {
+									m = comp_0.get(idx);
+									send( new Removed(m,n) ); 
+								}
+								exit_rule_count++;
+							} else {
 							}
+							cand_2 = candidates_2.get_next_alive();
 						}
-						cand_2 = candidates_2.get_next_alive();
 					}
 				}
-				cand_1 = candidates_1.get_next();
+				cand_1 = candidates_1.get_next_alive();
 			}
 		}
 		return true;
@@ -2142,82 +1816,63 @@ public class P2pdirectory extends RewriteMachine {
 	
 	/*
 	**** 1 Join Ordering of Rule connect ****
-	Rule Head Variables: (C::2), (M::4), (L::0), (O::1), (N::3)
+	Rule Head Variables: (C::1), (M::0), (N::2)
 	Rule Head Compre Binders: 
-	Active #H0 [(L::0)]member()
-	LookupAtom #H1 8:0:hash<[+]ownerAt(-)|.>  (L::0) [(L::0)]ownerAt((O::1))
-	LookupAtom #H2 10:0:hash<[+]reqCode(-)|.>  (L::0) [(L::0)]reqCode((C::2))
-	LookupAtom #H3 3:0:hash<[+]connect(-,-)|.>  (L::0) [(L::0)]connect((N::3),(M::4))
-	DeleteHead #H3
-	IntroAtom Remote NoPrior Mono [(O::1)]joinRequest((C::2),(N::3),(M::4))
+	Active #H0 [(M::0)]member((C::1))
+	LookupAtom #H1 3:0:hash<[+]connect(-)|.>  (M::0) [(M::0)]connect((N::2))
+	DeleteHead #H1
+	LetBind (O::3) ownerLoc(0)
+	IntroAtom Remote NoPrior Mono [(O::3)]joinRequest((C::1),(N::2),(M::0))
 	*/
 	protected boolean execute_member_join_ordering_1(Member act) {
 		
 		String c;
-		String m;
-		int l;
+		int m;
 		int o;
 		String n;
-		// Join Task: Active #H0 [(L::0)]member()
-		l = act.loc;
-		// Join Task: LookupAtom #H1 8:0:hash<[+]ownerAt(-)|.>  (L::0) [(L::0)]ownerAt((O::1))
-		StoreIter<OwnerAt> candidates_1 = ownerat_store_0.lookup_candidates(index0OwnerAt(l));
-		OwnerAt cand_1 = candidates_1.get_next();
+		// Join Task: Active #H0 [(M::0)]member((C::1))
+		m = act.loc;
+		c = act.arg1;
+		// Join Task: LookupAtom #H1 3:0:hash<[+]connect(-)|.>  (M::0) [(M::0)]connect((N::2))
+		StoreIter<Connect> candidates_1 = connect_store_0.lookup_candidates(index0Connect(m));
+		Connect cand_1 = candidates_1.get_next_alive();
 		while(cand_1 != null) {
-			int l1;
-			l1 = cand_1.loc;
-			o = cand_1.arg1;
+			int m1;
+			m1 = cand_1.loc;
+			n = cand_1.arg1;
 			if (true) {
-				// Join Task: LookupAtom #H2 10:0:hash<[+]reqCode(-)|.>  (L::0) [(L::0)]reqCode((C::2))
-				StoreIter<ReqCode> candidates_2 = reqcode_store_0.lookup_candidates(index0ReqCode(l));
-				ReqCode cand_2 = candidates_2.get_next();
-				while(cand_2 != null) {
-					int l2;
-					l2 = cand_2.loc;
-					c = cand_2.arg1;
-					if (true) {
-						// Join Task: LookupAtom #H3 3:0:hash<[+]connect(-,-)|.>  (L::0) [(L::0)]connect((N::3),(M::4))
-						StoreIter<Connect> candidates_3 = connect_store_0.lookup_candidates(index0Connect(l));
-						Connect cand_3 = candidates_3.get_next_alive();
-						while(cand_3 != null) {
-							int l3;
-							l3 = cand_3.loc;
-							n = cand_3.arg1;
-							m = cand_3.arg2;
-							if (true) {
-								// Join Task: DeleteHead #H3
-								connect_store_0.remove( cand_3 );
-								// Join Task: IntroAtom Remote NoPrior Mono [(O::1)]joinRequest((C::2),(N::3),(M::4))
-								send( new JoinRequest(o,c,n,m) ); 
-								connect_rule_count++;
-							}
-							cand_3 = candidates_3.get_next_alive();
-						}
-					}
-					cand_2 = candidates_2.get_next();
-				}
+				// Join Task: DeleteHead #H1
+				connect_store_0.remove( cand_1 );
+				// Join Task: LetBind (O::3) ownerLoc(0)
+				o = WifiDirectComingleDirectory.ownerLoc(0);
+				;
+				// Join Task: IntroAtom Remote NoPrior Mono [(O::3)]joinRequest((C::1),(N::2),(M::0))
+				send( new JoinRequest(o,c,n,m) ); 
+				connect_rule_count++;
 			}
-			cand_1 = candidates_1.get_next();
+			cand_1 = candidates_1.get_next_alive();
 		}
 		return true;
 	}
 	
 	/*
 	**** 1 Join Ordering of Rule quitM ****
-	Rule Head Variables: (M::0), (O::1)
+	Rule Head Variables: (C::1), (M::0)
 	Rule Head Compre Binders: 
-	Active #H0 [(M::0)]member()
+	Active #H0 [(M::0)]member((C::1))
 	LookupAtom #H1 2:0:hash<[+]quit()|.>  (M::0) [(M::0)]quit()
-	LookupAtom #H2 8:0:hash<[+]ownerAt(-)|.>  (M::0) [(M::0)]ownerAt((O::1))
 	DeleteHead #H1
-	IntroAtom Remote NoPrior Mono [(O::1)]exit((M::0))
+	LetBind (O::2) ownerLoc(0)
+	IntroAtom Remote NoPrior Mono [(O::2)]exit((M::0))
 	*/
 	protected boolean execute_member_join_ordering_2(Member act) {
 		
+		String c;
 		int m;
 		int o;
-		// Join Task: Active #H0 [(M::0)]member()
+		// Join Task: Active #H0 [(M::0)]member((C::1))
 		m = act.loc;
+		c = act.arg1;
 		// Join Task: LookupAtom #H1 2:0:hash<[+]quit()|.>  (M::0) [(M::0)]quit()
 		StoreIter<Quit> candidates_1 = quit_store_0.lookup_candidates(index0Quit(m));
 		Quit cand_1 = candidates_1.get_next_alive();
@@ -2225,706 +1880,14 @@ public class P2pdirectory extends RewriteMachine {
 			int m1;
 			m1 = cand_1.loc;
 			if (true) {
-				// Join Task: LookupAtom #H2 8:0:hash<[+]ownerAt(-)|.>  (M::0) [(M::0)]ownerAt((O::1))
-				StoreIter<OwnerAt> candidates_2 = ownerat_store_0.lookup_candidates(index0OwnerAt(m));
-				OwnerAt cand_2 = candidates_2.get_next();
-				while(cand_2 != null) {
-					int m2;
-					m2 = cand_2.loc;
-					o = cand_2.arg1;
-					if (true) {
-						// Join Task: DeleteHead #H1
-						quit_store_0.remove( cand_1 );
-						// Join Task: IntroAtom Remote NoPrior Mono [(O::1)]exit((M::0))
-						send( new Exit(o,m) ); 
-						quitM_rule_count++;
-					}
-					cand_2 = candidates_2.get_next();
-				}
-			}
-			cand_1 = candidates_1.get_next_alive();
-		}
-		return true;
-	}
-	
-	/*
-	**** 2 Join Ordering of Rule join ****
-	Rule Head Variables: (Ps::2), (C::1), (M::7), (L::8), (O::0), (N::6), (Ms::4)
-	Rule Head Compre Binders: (P::3), (S::5)
-	Active #H0 [(O::0)]owner()
-	LookupAtom #H1 11:0:hash<[+]next(-)|.>  (O::0) [(O::0)]next((L::8))
-	LookupAtom #H2 10:0:hash<[+]reqCode(-)|.>  (O::0) [(O::0)]reqCode((C::1))
-	LookupAtom #H3 9:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(N::6),(M::7))
-	LookupAll #H4 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-	CompreDomain #H4 (P::3) (Ps::2) [(O::0)]node((P::3))
-	LookupAll #H5 5:0:hash<[+]seen(-)|.>  (O::0) [(O::0)]seen((S::5))
-	CompreDomain #H5 (S::5) (Ms::4) [(O::0)]seen((S::5))
-	CheckGuard not((M::7) in (Ms::4))
-	DeleteHead #H1
-	DeleteHead #H3
-	LetBind (U::9) nextLoc((L::8))
-	LetBind (IP::10) lookupIP((M::7))
-	LetBind (Ds::11) retrieveDir(0)
-	IntroAtom Remote NoPrior Mono [(L::8)]added((L::8),(IP::10),(N::6),(M::7))
-	IntroAtom Remote NoPrior Mono [(L::8)]you((L::8))
-	IntroAtom Remote NoPrior Mono [(O::0)]next((U::9))
-	IntroAtom Remote NoPrior NonMono [(O::0)]node((L::8))
-	IntroAtom Remote NoPrior NonMono [(O::0)]seen((M::7))
-	IntroCompre Remote NoPrior Mono (P::12) (Ps::2) [(P::12)]added((L::8),(IP::10),(N::6),(M::7))
-	IntroCompre Remote NoPrior Mono (Lr::15),(Ir::14),(Nr::13),(Mr::16) (Ds::11) [(L::8)]added((Lr::15),(Ir::14),(Nr::13),(Mr::16))
-	*/
-	protected boolean execute_owner_join_ordering_1(Owner act) {
-		
-		SimpMultiset<Integer>  ps;
-		String c;
-		String ip;
-		String ir;
-		String m;
-		int l;
-		int o;
-		String n;
-		int p;
-		String s;
-		int lr;
-		SimpMultiset<String>  ms;
-		String mr;
-		int u;
-		String nr;
-		SimpMultiset<Tuple4<Integer,String,String,String> >  ds;
-		// Join Task: Active #H0 [(O::0)]owner()
-		o = act.loc;
-		// Join Task: LookupAtom #H1 11:0:hash<[+]next(-)|.>  (O::0) [(O::0)]next((L::8))
-		StoreIter<Next> candidates_1 = next_store_0.lookup_candidates(index0Next(o));
-		Next cand_1 = candidates_1.get_next_alive();
-		while(cand_1 != null) {
-			int o1;
-			o1 = cand_1.loc;
-			l = cand_1.arg1;
-			if (true) {
-				// Join Task: LookupAtom #H2 10:0:hash<[+]reqCode(-)|.>  (O::0) [(O::0)]reqCode((C::1))
-				StoreIter<ReqCode> candidates_2 = reqcode_store_0.lookup_candidates(index0ReqCode(o));
-				ReqCode cand_2 = candidates_2.get_next();
-				while(cand_2 != null) {
-					int o2;
-					o2 = cand_2.loc;
-					c = cand_2.arg1;
-					if (true) {
-						// Join Task: LookupAtom #H3 9:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(N::6),(M::7))
-						StoreIter<JoinRequest> candidates_3 = joinrequest_store_0.lookup_candidates(index0JoinRequest(o,c));
-						JoinRequest cand_3 = candidates_3.get_next_alive();
-						while(cand_3 != null) {
-							int o3;
-							String c3;
-							o3 = cand_3.loc;
-							c3 = cand_3.arg1;
-							n = cand_3.arg2;
-							m = cand_3.arg3;
-							if (Equality.is_eq(o,o3) && Equality.is_eq(c,c3)) {
-								// Join Task: LookupAll #H4 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-								StoreIter<Node> candidates_4 = node_store_0.lookup_candidates(index0Node(o));
-								// Join Task: CompreDomain #H4 (P::3) (Ps::2) [(O::0)]node((P::3))
-								ps = new SimpMultiset<Integer> ();
-								Node cand_4_0 = candidates_4.get_next_alive();
-								while(cand_4_0 != null) {
-									o = cand_4_0.loc;
-									p = cand_4_0.arg1;
-									ps.add( p );
-									cand_4_0 = candidates_4.get_next_alive();
-								}
-								candidates_4.init_iter();
-								// Join Task: LookupAll #H5 5:0:hash<[+]seen(-)|.>  (O::0) [(O::0)]seen((S::5))
-								StoreIter<Seen> candidates_5 = seen_store_0.lookup_candidates(index0Seen(o));
-								// Join Task: CompreDomain #H5 (S::5) (Ms::4) [(O::0)]seen((S::5))
-								ms = new SimpMultiset<String> ();
-								Seen cand_5_0 = candidates_5.get_next();
-								while(cand_5_0 != null) {
-									o = cand_5_0.loc;
-									s = cand_5_0.arg1;
-									ms.add( s );
-									cand_5_0 = candidates_5.get_next();
-								}
-								candidates_5.init_iter();
-								// Join Task: CheckGuard not((M::7) in (Ms::4))
-								if (ExtLib.not(ExtLib.in(m,ms))) {
-									// Join Task: DeleteHead #H1
-									next_store_0.remove( cand_1 );
-									// Join Task: DeleteHead #H3
-									joinrequest_store_0.remove( cand_3 );
-									// Join Task: LetBind (U::9) nextLoc((L::8))
-									u = WifiDirectComingleDirectory.nextLoc(l);
-									;
-									// Join Task: LetBind (IP::10) lookupIP((M::7))
-									ip = WifiDirectComingleDirectory.lookupIP(m);
-									;
-									// Join Task: LetBind (Ds::11) retrieveDir(0)
-									ds = WifiDirectComingleDirectory.retrieveDir(0);
-									;
-									// Join Task: IntroAtom Remote NoPrior Mono [(L::8)]added((L::8),(IP::10),(N::6),(M::7))
-									send( new Added(l,l,ip,n,m) ); 
-									// Join Task: IntroAtom Remote NoPrior Mono [(L::8)]you((L::8))
-									send( new You(l,l) ); 
-									// Join Task: IntroAtom Remote NoPrior Mono [(O::0)]next((U::9))
-									intro( new Next(o,u) );
-									// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]node((L::8))
-									intro( new Node(o,l) );
-									// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]seen((M::7))
-									intro( new Seen(o,m) );
-									// Join Task: IntroCompre Remote NoPrior Mono (P::12) (Ps::2) [(P::12)]added((L::8),(IP::10),(N::6),(M::7))
-									SimpMultiset<Integer>  comp_0 = ps;
-									for(int idx=0; idx<comp_0.size(); idx++) {
-										p = comp_0.get(idx);
-										send( new Added(p,l,ip,n,m) ); 
-									}
-									// Join Task: IntroCompre Remote NoPrior Mono (Lr::15),(Ir::14),(Nr::13),(Mr::16) (Ds::11) [(L::8)]added((Lr::15),(Ir::14),(Nr::13),(Mr::16))
-									SimpMultiset<Tuple4<Integer,String,String,String> >  comp_1 = ds;
-									for(int idx=0; idx<comp_1.size(); idx++) {
-										Tuple4<Integer,String,String,String>  tup2;
-										tup2 = comp_1.get(idx);
-										lr = tup2.t1;
-										ir = tup2.t2;
-										nr = tup2.t3;
-										mr = tup2.t4;
-										send( new Added(l,lr,ir,nr,mr) ); 
-									}
-									join_rule_count++;
-								}
-							} else {
-							}
-							cand_3 = candidates_3.get_next_alive();
-						}
-					}
-					cand_2 = candidates_2.get_next();
-				}
-			}
-			cand_1 = candidates_1.get_next_alive();
-		}
-		return true;
-	}
-	
-	/*
-	**** 1 Join Ordering of Rule quitO ****
-	Rule Head Variables: (Ps::1), (O::0)
-	Rule Head Compre Binders: (P::2)
-	Active #H0 [(O::0)]owner()
-	LookupAtom #H1 2:0:hash<[+]quit()|.>  (O::0) [(O::0)]quit()
-	LookupAll #H2 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::2))
-	CompreDomain #H2 (P::2) (Ps::1) [(O::0)]node((P::2))
-	DeleteHead #H1
-	IntroCompre Remote NoPrior Mono (P::3) (Ps::1) [(P::3)]ownerQuit()
-	*/
-	protected boolean execute_owner_join_ordering_2(Owner act) {
-		
-		int p;
-		int o;
-		SimpMultiset<Integer>  ps;
-		// Join Task: Active #H0 [(O::0)]owner()
-		o = act.loc;
-		// Join Task: LookupAtom #H1 2:0:hash<[+]quit()|.>  (O::0) [(O::0)]quit()
-		StoreIter<Quit> candidates_1 = quit_store_0.lookup_candidates(index0Quit(o));
-		Quit cand_1 = candidates_1.get_next_alive();
-		while(cand_1 != null) {
-			int o1;
-			o1 = cand_1.loc;
-			if (true) {
-				// Join Task: LookupAll #H2 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::2))
-				StoreIter<Node> candidates_2 = node_store_0.lookup_candidates(index0Node(o));
-				// Join Task: CompreDomain #H2 (P::2) (Ps::1) [(O::0)]node((P::2))
-				ps = new SimpMultiset<Integer> ();
-				Node cand_2_0 = candidates_2.get_next_alive();
-				while(cand_2_0 != null) {
-					o = cand_2_0.loc;
-					p = cand_2_0.arg1;
-					ps.add( p );
-					cand_2_0 = candidates_2.get_next_alive();
-				}
-				candidates_2.init_iter();
 				// Join Task: DeleteHead #H1
 				quit_store_0.remove( cand_1 );
-				// Join Task: IntroCompre Remote NoPrior Mono (P::3) (Ps::1) [(P::3)]ownerQuit()
-				SimpMultiset<Integer>  comp_0 = ps;
-				for(int idx=0; idx<comp_0.size(); idx++) {
-					p = comp_0.get(idx);
-					send( new OwnerQuit(p) ); 
-				}
-				quitO_rule_count++;
-			}
-			cand_1 = candidates_1.get_next_alive();
-		}
-		return true;
-	}
-	
-	/*
-	**** 2 Join Ordering of Rule connect ****
-	Rule Head Variables: (C::2), (M::4), (L::0), (O::1), (N::3)
-	Rule Head Compre Binders: 
-	Active #H0 [(L::0)]ownerAt((O::1))
-	LookupAtom #H1 6:0:hash<[+]member()|.>  (L::0) [(L::0)]member()
-	LookupAtom #H2 10:0:hash<[+]reqCode(-)|.>  (L::0) [(L::0)]reqCode((C::2))
-	LookupAtom #H3 3:0:hash<[+]connect(-,-)|.>  (L::0) [(L::0)]connect((N::3),(M::4))
-	DeleteHead #H3
-	IntroAtom Remote NoPrior Mono [(O::1)]joinRequest((C::2),(N::3),(M::4))
-	*/
-	protected boolean execute_ownerat_join_ordering_1(OwnerAt act) {
-		
-		String c;
-		String m;
-		int l;
-		int o;
-		String n;
-		// Join Task: Active #H0 [(L::0)]ownerAt((O::1))
-		l = act.loc;
-		o = act.arg1;
-		// Join Task: LookupAtom #H1 6:0:hash<[+]member()|.>  (L::0) [(L::0)]member()
-		StoreIter<Member> candidates_1 = member_store_0.lookup_candidates(index0Member(l));
-		Member cand_1 = candidates_1.get_next();
-		while(cand_1 != null) {
-			int l1;
-			l1 = cand_1.loc;
-			if (true) {
-				// Join Task: LookupAtom #H2 10:0:hash<[+]reqCode(-)|.>  (L::0) [(L::0)]reqCode((C::2))
-				StoreIter<ReqCode> candidates_2 = reqcode_store_0.lookup_candidates(index0ReqCode(l));
-				ReqCode cand_2 = candidates_2.get_next();
-				while(cand_2 != null) {
-					int l2;
-					l2 = cand_2.loc;
-					c = cand_2.arg1;
-					if (true) {
-						// Join Task: LookupAtom #H3 3:0:hash<[+]connect(-,-)|.>  (L::0) [(L::0)]connect((N::3),(M::4))
-						StoreIter<Connect> candidates_3 = connect_store_0.lookup_candidates(index0Connect(l));
-						Connect cand_3 = candidates_3.get_next_alive();
-						while(cand_3 != null) {
-							int l3;
-							l3 = cand_3.loc;
-							n = cand_3.arg1;
-							m = cand_3.arg2;
-							if (true) {
-								// Join Task: DeleteHead #H3
-								connect_store_0.remove( cand_3 );
-								// Join Task: IntroAtom Remote NoPrior Mono [(O::1)]joinRequest((C::2),(N::3),(M::4))
-								send( new JoinRequest(o,c,n,m) ); 
-								connect_rule_count++;
-							}
-							cand_3 = candidates_3.get_next_alive();
-						}
-					}
-					cand_2 = candidates_2.get_next();
-				}
-			}
-			cand_1 = candidates_1.get_next();
-		}
-		return true;
-	}
-	
-	/*
-	**** 2 Join Ordering of Rule quitM ****
-	Rule Head Variables: (M::0), (O::1)
-	Rule Head Compre Binders: 
-	Active #H0 [(M::0)]ownerAt((O::1))
-	LookupAtom #H1 2:0:hash<[+]quit()|.>  (M::0) [(M::0)]quit()
-	LookupAtom #H2 6:0:hash<[+]member()|.>  (M::0) [(M::0)]member()
-	DeleteHead #H1
-	IntroAtom Remote NoPrior Mono [(O::1)]exit((M::0))
-	*/
-	protected boolean execute_ownerat_join_ordering_2(OwnerAt act) {
-		
-		int m;
-		int o;
-		// Join Task: Active #H0 [(M::0)]ownerAt((O::1))
-		m = act.loc;
-		o = act.arg1;
-		// Join Task: LookupAtom #H1 2:0:hash<[+]quit()|.>  (M::0) [(M::0)]quit()
-		StoreIter<Quit> candidates_1 = quit_store_0.lookup_candidates(index0Quit(m));
-		Quit cand_1 = candidates_1.get_next_alive();
-		while(cand_1 != null) {
-			int m1;
-			m1 = cand_1.loc;
-			if (true) {
-				// Join Task: LookupAtom #H2 6:0:hash<[+]member()|.>  (M::0) [(M::0)]member()
-				StoreIter<Member> candidates_2 = member_store_0.lookup_candidates(index0Member(m));
-				Member cand_2 = candidates_2.get_next();
-				while(cand_2 != null) {
-					int m2;
-					m2 = cand_2.loc;
-					if (true) {
-						// Join Task: DeleteHead #H1
-						quit_store_0.remove( cand_1 );
-						// Join Task: IntroAtom Remote NoPrior Mono [(O::1)]exit((M::0))
-						send( new Exit(o,m) ); 
-						quitM_rule_count++;
-					}
-					cand_2 = candidates_2.get_next();
-				}
-			}
-			cand_1 = candidates_1.get_next_alive();
-		}
-		return true;
-	}
-	
-	/*
-	**** 0 Join Ordering of Rule join ****
-	Rule Head Variables: (Ps::2), (C::1), (M::7), (L::8), (O::0), (N::6), (Ms::4)
-	Rule Head Compre Binders: (P::3), (S::5)
-	Active #H0 [(O::0)]joinRequest((C::1),(N::6),(M::7))
-	LookupAtom #H1 10:1:hash<[+]reqCode(+)|.>  (O::0),(C::1) [(O::0)]reqCode((C::1))
-	LookupAtom #H2 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-	LookupAtom #H3 11:0:hash<[+]next(-)|.>  (O::0) [(O::0)]next((L::8))
-	LookupAll #H4 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-	CompreDomain #H4 (P::3) (Ps::2) [(O::0)]node((P::3))
-	LookupAll #H5 5:0:hash<[+]seen(-)|.>  (O::0) [(O::0)]seen((S::5))
-	CompreDomain #H5 (S::5) (Ms::4) [(O::0)]seen((S::5))
-	CheckGuard not((M::7) in (Ms::4))
-	DeleteHead #H0
-	DeleteHead #H3
-	LetBind (U::9) nextLoc((L::8))
-	LetBind (IP::10) lookupIP((M::7))
-	LetBind (Ds::11) retrieveDir(0)
-	IntroAtom Remote NoPrior Mono [(L::8)]added((L::8),(IP::10),(N::6),(M::7))
-	IntroAtom Remote NoPrior Mono [(L::8)]you((L::8))
-	IntroAtom Remote NoPrior Mono [(O::0)]next((U::9))
-	IntroAtom Remote NoPrior NonMono [(O::0)]node((L::8))
-	IntroAtom Remote NoPrior NonMono [(O::0)]seen((M::7))
-	IntroCompre Remote NoPrior Mono (P::12) (Ps::2) [(P::12)]added((L::8),(IP::10),(N::6),(M::7))
-	IntroCompre Remote NoPrior Mono (Lr::15),(Ir::14),(Nr::13),(Mr::16) (Ds::11) [(L::8)]added((Lr::15),(Ir::14),(Nr::13),(Mr::16))
-	*/
-	protected boolean execute_joinrequest_join_ordering_1(JoinRequest act) {
-		
-		SimpMultiset<Integer>  ps;
-		String c;
-		String ip;
-		String ir;
-		String m;
-		int l;
-		int o;
-		String n;
-		int p;
-		String s;
-		int lr;
-		SimpMultiset<String>  ms;
-		String mr;
-		int u;
-		String nr;
-		SimpMultiset<Tuple4<Integer,String,String,String> >  ds;
-		// Join Task: Active #H0 [(O::0)]joinRequest((C::1),(N::6),(M::7))
-		o = act.loc;
-		c = act.arg1;
-		n = act.arg2;
-		m = act.arg3;
-		// Join Task: LookupAtom #H1 10:1:hash<[+]reqCode(+)|.>  (O::0),(C::1) [(O::0)]reqCode((C::1))
-		StoreIter<ReqCode> candidates_1 = reqcode_store_1.lookup_candidates(index1ReqCode(o,c));
-		ReqCode cand_1 = candidates_1.get_next();
-		while(cand_1 != null) {
-			int o1;
-			String c1;
-			o1 = cand_1.loc;
-			c1 = cand_1.arg1;
-			if (Equality.is_eq(o,o1) && Equality.is_eq(c,c1)) {
-				// Join Task: LookupAtom #H2 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-				StoreIter<Owner> candidates_2 = owner_store_0.lookup_candidates(index0Owner(o));
-				Owner cand_2 = candidates_2.get_next();
-				while(cand_2 != null) {
-					int o2;
-					o2 = cand_2.loc;
-					if (true) {
-						// Join Task: LookupAtom #H3 11:0:hash<[+]next(-)|.>  (O::0) [(O::0)]next((L::8))
-						StoreIter<Next> candidates_3 = next_store_0.lookup_candidates(index0Next(o));
-						Next cand_3 = candidates_3.get_next_alive();
-						while(cand_3 != null) {
-							int o3;
-							o3 = cand_3.loc;
-							l = cand_3.arg1;
-							if (true) {
-								// Join Task: LookupAll #H4 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-								StoreIter<Node> candidates_4 = node_store_0.lookup_candidates(index0Node(o));
-								// Join Task: CompreDomain #H4 (P::3) (Ps::2) [(O::0)]node((P::3))
-								ps = new SimpMultiset<Integer> ();
-								Node cand_4_0 = candidates_4.get_next_alive();
-								while(cand_4_0 != null) {
-									o = cand_4_0.loc;
-									p = cand_4_0.arg1;
-									ps.add( p );
-									cand_4_0 = candidates_4.get_next_alive();
-								}
-								candidates_4.init_iter();
-								// Join Task: LookupAll #H5 5:0:hash<[+]seen(-)|.>  (O::0) [(O::0)]seen((S::5))
-								StoreIter<Seen> candidates_5 = seen_store_0.lookup_candidates(index0Seen(o));
-								// Join Task: CompreDomain #H5 (S::5) (Ms::4) [(O::0)]seen((S::5))
-								ms = new SimpMultiset<String> ();
-								Seen cand_5_0 = candidates_5.get_next();
-								while(cand_5_0 != null) {
-									o = cand_5_0.loc;
-									s = cand_5_0.arg1;
-									ms.add( s );
-									cand_5_0 = candidates_5.get_next();
-								}
-								candidates_5.init_iter();
-								// Join Task: CheckGuard not((M::7) in (Ms::4))
-								if (ExtLib.not(ExtLib.in(m,ms))) {
-									// Join Task: DeleteHead #H0
-									// H0 is active and monotone, no delete required
-									// Join Task: DeleteHead #H3
-									next_store_0.remove( cand_3 );
-									// Join Task: LetBind (U::9) nextLoc((L::8))
-									u = WifiDirectComingleDirectory.nextLoc(l);
-									;
-									// Join Task: LetBind (IP::10) lookupIP((M::7))
-									ip = WifiDirectComingleDirectory.lookupIP(m);
-									;
-									// Join Task: LetBind (Ds::11) retrieveDir(0)
-									ds = WifiDirectComingleDirectory.retrieveDir(0);
-									;
-									// Join Task: IntroAtom Remote NoPrior Mono [(L::8)]added((L::8),(IP::10),(N::6),(M::7))
-									send( new Added(l,l,ip,n,m) ); 
-									// Join Task: IntroAtom Remote NoPrior Mono [(L::8)]you((L::8))
-									send( new You(l,l) ); 
-									// Join Task: IntroAtom Remote NoPrior Mono [(O::0)]next((U::9))
-									intro( new Next(o,u) );
-									// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]node((L::8))
-									intro( new Node(o,l) );
-									// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]seen((M::7))
-									intro( new Seen(o,m) );
-									// Join Task: IntroCompre Remote NoPrior Mono (P::12) (Ps::2) [(P::12)]added((L::8),(IP::10),(N::6),(M::7))
-									SimpMultiset<Integer>  comp_0 = ps;
-									for(int idx=0; idx<comp_0.size(); idx++) {
-										p = comp_0.get(idx);
-										send( new Added(p,l,ip,n,m) ); 
-									}
-									// Join Task: IntroCompre Remote NoPrior Mono (Lr::15),(Ir::14),(Nr::13),(Mr::16) (Ds::11) [(L::8)]added((Lr::15),(Ir::14),(Nr::13),(Mr::16))
-									SimpMultiset<Tuple4<Integer,String,String,String> >  comp_1 = ds;
-									for(int idx=0; idx<comp_1.size(); idx++) {
-										Tuple4<Integer,String,String,String>  tup3;
-										tup3 = comp_1.get(idx);
-										lr = tup3.t1;
-										ir = tup3.t2;
-										nr = tup3.t3;
-										mr = tup3.t4;
-										send( new Added(l,lr,ir,nr,mr) ); 
-									}
-									join_rule_count++;
-									return false;
-								}
-							}
-							cand_3 = candidates_3.get_next_alive();
-						}
-					}
-					cand_2 = candidates_2.get_next();
-				}
-			} else {
-			}
-			cand_1 = candidates_1.get_next();
-		}
-		return true;
-	}
-	
-	/*
-	**** 3 Join Ordering of Rule connect ****
-	Rule Head Variables: (C::2), (M::4), (L::0), (O::1), (N::3)
-	Rule Head Compre Binders: 
-	Active #H0 [(L::0)]reqCode((C::2))
-	LookupAtom #H1 6:0:hash<[+]member()|.>  (L::0) [(L::0)]member()
-	LookupAtom #H2 8:0:hash<[+]ownerAt(-)|.>  (L::0) [(L::0)]ownerAt((O::1))
-	LookupAtom #H3 3:0:hash<[+]connect(-,-)|.>  (L::0) [(L::0)]connect((N::3),(M::4))
-	DeleteHead #H3
-	IntroAtom Remote NoPrior Mono [(O::1)]joinRequest((C::2),(N::3),(M::4))
-	*/
-	protected boolean execute_reqcode_join_ordering_1(ReqCode act) {
-		
-		String c;
-		String m;
-		int l;
-		int o;
-		String n;
-		// Join Task: Active #H0 [(L::0)]reqCode((C::2))
-		l = act.loc;
-		c = act.arg1;
-		// Join Task: LookupAtom #H1 6:0:hash<[+]member()|.>  (L::0) [(L::0)]member()
-		StoreIter<Member> candidates_1 = member_store_0.lookup_candidates(index0Member(l));
-		Member cand_1 = candidates_1.get_next();
-		while(cand_1 != null) {
-			int l1;
-			l1 = cand_1.loc;
-			if (true) {
-				// Join Task: LookupAtom #H2 8:0:hash<[+]ownerAt(-)|.>  (L::0) [(L::0)]ownerAt((O::1))
-				StoreIter<OwnerAt> candidates_2 = ownerat_store_0.lookup_candidates(index0OwnerAt(l));
-				OwnerAt cand_2 = candidates_2.get_next();
-				while(cand_2 != null) {
-					int l2;
-					l2 = cand_2.loc;
-					o = cand_2.arg1;
-					if (true) {
-						// Join Task: LookupAtom #H3 3:0:hash<[+]connect(-,-)|.>  (L::0) [(L::0)]connect((N::3),(M::4))
-						StoreIter<Connect> candidates_3 = connect_store_0.lookup_candidates(index0Connect(l));
-						Connect cand_3 = candidates_3.get_next_alive();
-						while(cand_3 != null) {
-							int l3;
-							l3 = cand_3.loc;
-							n = cand_3.arg1;
-							m = cand_3.arg2;
-							if (true) {
-								// Join Task: DeleteHead #H3
-								connect_store_0.remove( cand_3 );
-								// Join Task: IntroAtom Remote NoPrior Mono [(O::1)]joinRequest((C::2),(N::3),(M::4))
-								send( new JoinRequest(o,c,n,m) ); 
-								connect_rule_count++;
-							}
-							cand_3 = candidates_3.get_next_alive();
-						}
-					}
-					cand_2 = candidates_2.get_next();
-				}
-			}
-			cand_1 = candidates_1.get_next();
-		}
-		return true;
-	}
-	
-	/*
-	**** 3 Join Ordering of Rule join ****
-	Rule Head Variables: (Ps::2), (C::1), (M::7), (L::8), (O::0), (N::6), (Ms::4)
-	Rule Head Compre Binders: (P::3), (S::5)
-	Active #H0 [(O::0)]reqCode((C::1))
-	LookupAtom #H1 9:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(N::6),(M::7))
-	LookupAtom #H2 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-	LookupAtom #H3 11:0:hash<[+]next(-)|.>  (O::0) [(O::0)]next((L::8))
-	LookupAll #H4 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-	CompreDomain #H4 (P::3) (Ps::2) [(O::0)]node((P::3))
-	LookupAll #H5 5:0:hash<[+]seen(-)|.>  (O::0) [(O::0)]seen((S::5))
-	CompreDomain #H5 (S::5) (Ms::4) [(O::0)]seen((S::5))
-	CheckGuard not((M::7) in (Ms::4))
-	DeleteHead #H1
-	DeleteHead #H3
-	LetBind (U::9) nextLoc((L::8))
-	LetBind (IP::10) lookupIP((M::7))
-	LetBind (Ds::11) retrieveDir(0)
-	IntroAtom Remote NoPrior Mono [(L::8)]added((L::8),(IP::10),(N::6),(M::7))
-	IntroAtom Remote NoPrior Mono [(L::8)]you((L::8))
-	IntroAtom Remote NoPrior Mono [(O::0)]next((U::9))
-	IntroAtom Remote NoPrior NonMono [(O::0)]node((L::8))
-	IntroAtom Remote NoPrior NonMono [(O::0)]seen((M::7))
-	IntroCompre Remote NoPrior Mono (P::12) (Ps::2) [(P::12)]added((L::8),(IP::10),(N::6),(M::7))
-	IntroCompre Remote NoPrior Mono (Lr::15),(Ir::14),(Nr::13),(Mr::16) (Ds::11) [(L::8)]added((Lr::15),(Ir::14),(Nr::13),(Mr::16))
-	*/
-	protected boolean execute_reqcode_join_ordering_2(ReqCode act) {
-		
-		SimpMultiset<Integer>  ps;
-		String c;
-		String ip;
-		String ir;
-		String m;
-		int l;
-		int o;
-		String n;
-		int p;
-		String s;
-		int lr;
-		SimpMultiset<String>  ms;
-		String mr;
-		int u;
-		String nr;
-		SimpMultiset<Tuple4<Integer,String,String,String> >  ds;
-		// Join Task: Active #H0 [(O::0)]reqCode((C::1))
-		o = act.loc;
-		c = act.arg1;
-		// Join Task: LookupAtom #H1 9:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(N::6),(M::7))
-		StoreIter<JoinRequest> candidates_1 = joinrequest_store_0.lookup_candidates(index0JoinRequest(o,c));
-		JoinRequest cand_1 = candidates_1.get_next_alive();
-		while(cand_1 != null) {
-			int o1;
-			String c1;
-			o1 = cand_1.loc;
-			c1 = cand_1.arg1;
-			n = cand_1.arg2;
-			m = cand_1.arg3;
-			if (Equality.is_eq(o,o1) && Equality.is_eq(c,c1)) {
-				// Join Task: LookupAtom #H2 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-				StoreIter<Owner> candidates_2 = owner_store_0.lookup_candidates(index0Owner(o));
-				Owner cand_2 = candidates_2.get_next();
-				while(cand_2 != null) {
-					int o2;
-					o2 = cand_2.loc;
-					if (true) {
-						// Join Task: LookupAtom #H3 11:0:hash<[+]next(-)|.>  (O::0) [(O::0)]next((L::8))
-						StoreIter<Next> candidates_3 = next_store_0.lookup_candidates(index0Next(o));
-						Next cand_3 = candidates_3.get_next_alive();
-						while(cand_3 != null) {
-							int o3;
-							o3 = cand_3.loc;
-							l = cand_3.arg1;
-							if (true) {
-								// Join Task: LookupAll #H4 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-								StoreIter<Node> candidates_4 = node_store_0.lookup_candidates(index0Node(o));
-								// Join Task: CompreDomain #H4 (P::3) (Ps::2) [(O::0)]node((P::3))
-								ps = new SimpMultiset<Integer> ();
-								Node cand_4_0 = candidates_4.get_next_alive();
-								while(cand_4_0 != null) {
-									o = cand_4_0.loc;
-									p = cand_4_0.arg1;
-									ps.add( p );
-									cand_4_0 = candidates_4.get_next_alive();
-								}
-								candidates_4.init_iter();
-								// Join Task: LookupAll #H5 5:0:hash<[+]seen(-)|.>  (O::0) [(O::0)]seen((S::5))
-								StoreIter<Seen> candidates_5 = seen_store_0.lookup_candidates(index0Seen(o));
-								// Join Task: CompreDomain #H5 (S::5) (Ms::4) [(O::0)]seen((S::5))
-								ms = new SimpMultiset<String> ();
-								Seen cand_5_0 = candidates_5.get_next();
-								while(cand_5_0 != null) {
-									o = cand_5_0.loc;
-									s = cand_5_0.arg1;
-									ms.add( s );
-									cand_5_0 = candidates_5.get_next();
-								}
-								candidates_5.init_iter();
-								// Join Task: CheckGuard not((M::7) in (Ms::4))
-								if (ExtLib.not(ExtLib.in(m,ms))) {
-									// Join Task: DeleteHead #H1
-									joinrequest_store_0.remove( cand_1 );
-									// Join Task: DeleteHead #H3
-									next_store_0.remove( cand_3 );
-									// Join Task: LetBind (U::9) nextLoc((L::8))
-									u = WifiDirectComingleDirectory.nextLoc(l);
-									;
-									// Join Task: LetBind (IP::10) lookupIP((M::7))
-									ip = WifiDirectComingleDirectory.lookupIP(m);
-									;
-									// Join Task: LetBind (Ds::11) retrieveDir(0)
-									ds = WifiDirectComingleDirectory.retrieveDir(0);
-									;
-									// Join Task: IntroAtom Remote NoPrior Mono [(L::8)]added((L::8),(IP::10),(N::6),(M::7))
-									send( new Added(l,l,ip,n,m) ); 
-									// Join Task: IntroAtom Remote NoPrior Mono [(L::8)]you((L::8))
-									send( new You(l,l) ); 
-									// Join Task: IntroAtom Remote NoPrior Mono [(O::0)]next((U::9))
-									intro( new Next(o,u) );
-									// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]node((L::8))
-									intro( new Node(o,l) );
-									// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]seen((M::7))
-									intro( new Seen(o,m) );
-									// Join Task: IntroCompre Remote NoPrior Mono (P::12) (Ps::2) [(P::12)]added((L::8),(IP::10),(N::6),(M::7))
-									SimpMultiset<Integer>  comp_0 = ps;
-									for(int idx=0; idx<comp_0.size(); idx++) {
-										p = comp_0.get(idx);
-										send( new Added(p,l,ip,n,m) ); 
-									}
-									// Join Task: IntroCompre Remote NoPrior Mono (Lr::15),(Ir::14),(Nr::13),(Mr::16) (Ds::11) [(L::8)]added((Lr::15),(Ir::14),(Nr::13),(Mr::16))
-									SimpMultiset<Tuple4<Integer,String,String,String> >  comp_1 = ds;
-									for(int idx=0; idx<comp_1.size(); idx++) {
-										Tuple4<Integer,String,String,String>  tup4;
-										tup4 = comp_1.get(idx);
-										lr = tup4.t1;
-										ir = tup4.t2;
-										nr = tup4.t3;
-										mr = tup4.t4;
-										send( new Added(l,lr,ir,nr,mr) ); 
-									}
-									join_rule_count++;
-								}
-							}
-							cand_3 = candidates_3.get_next_alive();
-						}
-					}
-					cand_2 = candidates_2.get_next();
-				}
-			} else {
+				// Join Task: LetBind (O::2) ownerLoc(0)
+				o = WifiDirectComingleDirectory.ownerLoc(0);
+				;
+				// Join Task: IntroAtom Remote NoPrior Mono [(O::2)]exit((M::0))
+				send( new Exit(o,m) ); 
+				quitM_rule_count++;
 			}
 			cand_1 = candidates_1.get_next_alive();
 		}
@@ -2933,222 +1896,352 @@ public class P2pdirectory extends RewriteMachine {
 	
 	/*
 	**** 1 Join Ordering of Rule join ****
-	Rule Head Variables: (Ps::2), (C::1), (M::7), (L::8), (O::0), (N::6), (Ms::4)
-	Rule Head Compre Binders: (P::3), (S::5)
-	Active #H0 [(O::0)]next((L::8))
-	LookupAtom #H1 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-	LookupAtom #H2 10:0:hash<[+]reqCode(-)|.>  (O::0) [(O::0)]reqCode((C::1))
-	LookupAtom #H3 9:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(N::6),(M::7))
-	LookupAll #H4 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-	CompreDomain #H4 (P::3) (Ps::2) [(O::0)]node((P::3))
-	LookupAll #H5 5:0:hash<[+]seen(-)|.>  (O::0) [(O::0)]seen((S::5))
-	CompreDomain #H5 (S::5) (Ms::4) [(O::0)]seen((S::5))
-	CheckGuard not((M::7) in (Ms::4))
-	DeleteHead #H0
-	DeleteHead #H3
-	LetBind (U::9) nextLoc((L::8))
-	LetBind (IP::10) lookupIP((M::7))
-	LetBind (Ds::11) retrieveDir(0)
-	IntroAtom Remote NoPrior Mono [(L::8)]added((L::8),(IP::10),(N::6),(M::7))
-	IntroAtom Remote NoPrior Mono [(L::8)]you((L::8))
-	IntroAtom Remote NoPrior Mono [(O::0)]next((U::9))
-	IntroAtom Remote NoPrior NonMono [(O::0)]node((L::8))
-	IntroAtom Remote NoPrior NonMono [(O::0)]seen((M::7))
-	IntroCompre Remote NoPrior Mono (P::12) (Ps::2) [(P::12)]added((L::8),(IP::10),(N::6),(M::7))
-	IntroCompre Remote NoPrior Mono (Lr::15),(Ir::14),(Nr::13),(Mr::16) (Ds::11) [(L::8)]added((Lr::15),(Ir::14),(Nr::13),(Mr::16))
+	Rule Head Variables: (C::1), (NewN::4), (Ms::2), (O::0), (NewM::5)
+	Rule Head Compre Binders: (M::3)
+	Active #H0 [(O::0)]owner((C::1))
+	LookupAtom #H1 7:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(NewN::4),(NewM::5))
+	LookupAll #H2 4:0:hash<[+]joined(-)|.>  (O::0) [(O::0)]joined((M::3))
+	CompreDomain #H2 (M::3) (Ms::2) [(O::0)]joined((M::3))
+	CheckGuard not((NewM::5) in (Ms::2))
+	DeleteHead #H1
+	LetBind (NewIP::6) lookupIP((NewM::5))
+	LetBind (Ds::7) retrieveDir(0)
+	IntroAtom Remote NoPrior Mono [(NewM::5)]added((NewM::5),(NewIP::6),(NewN::4))
+	IntroAtom Remote NoPrior NonMono [(O::0)]joined((NewM::5))
+	IntroAtom Remote NoPrior Mono [(NewM::5)]connected()
+	IntroCompre Remote NoPrior Mono (M::8) (Ms::2) [(M::8)]added((NewM::5),(NewIP::6),(NewN::4))
+	IntroCompre Remote NoPrior Mono (M::10),(IP::9),(N::11) (Ds::7) [(NewM::5)]added((M::10),(IP::9),(N::11))
 	*/
-	protected boolean execute_next_join_ordering_1(Next act) {
+	protected boolean execute_owner_join_ordering_1(Owner act) {
 		
-		SimpMultiset<Integer>  ps;
+		String newip;
 		String c;
+		String newn;
+		int newm;
 		String ip;
-		String ir;
-		String m;
-		int l;
+		int m;
 		int o;
 		String n;
-		int p;
-		String s;
-		int lr;
-		SimpMultiset<String>  ms;
-		String mr;
-		int u;
-		String nr;
-		SimpMultiset<Tuple4<Integer,String,String,String> >  ds;
-		// Join Task: Active #H0 [(O::0)]next((L::8))
+		SimpMultiset<Integer>  ms;
+		SimpMultiset<Tuple3<Integer,String,String> >  ds;
+		// Join Task: Active #H0 [(O::0)]owner((C::1))
 		o = act.loc;
-		l = act.arg1;
-		// Join Task: LookupAtom #H1 7:0:hash<[+]owner()|.>  (O::0) [(O::0)]owner()
-		StoreIter<Owner> candidates_1 = owner_store_0.lookup_candidates(index0Owner(o));
-		Owner cand_1 = candidates_1.get_next();
+		c = act.arg1;
+		// Join Task: LookupAtom #H1 7:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(NewN::4),(NewM::5))
+		StoreIter<JoinRequest> candidates_1 = joinrequest_store_0.lookup_candidates(index0JoinRequest(o,c));
+		JoinRequest cand_1 = candidates_1.get_next_alive();
+		while(cand_1 != null) {
+			int o1;
+			String c1;
+			o1 = cand_1.loc;
+			c1 = cand_1.arg1;
+			newn = cand_1.arg2;
+			newm = cand_1.arg3;
+			if (Equality.is_eq(o,o1) && Equality.is_eq(c,c1)) {
+				// Join Task: LookupAll #H2 4:0:hash<[+]joined(-)|.>  (O::0) [(O::0)]joined((M::3))
+				StoreIter<Joined> candidates_2 = joined_store_0.lookup_candidates(index0Joined(o));
+				// Join Task: CompreDomain #H2 (M::3) (Ms::2) [(O::0)]joined((M::3))
+				ms = new SimpMultiset<Integer> ();
+				Joined cand_2_0 = candidates_2.get_next_alive();
+				while(cand_2_0 != null) {
+					o = cand_2_0.loc;
+					m = cand_2_0.arg1;
+					ms.add( m );
+					cand_2_0 = candidates_2.get_next_alive();
+				}
+				candidates_2.init_iter();
+				// Join Task: CheckGuard not((NewM::5) in (Ms::2))
+				if (ExtLib.not(ExtLib.in(newm,ms))) {
+					// Join Task: DeleteHead #H1
+					joinrequest_store_0.remove( cand_1 );
+					// Join Task: LetBind (NewIP::6) lookupIP((NewM::5))
+					newip = WifiDirectComingleDirectory.lookupIP(newm);
+					;
+					// Join Task: LetBind (Ds::7) retrieveDir(0)
+					ds = WifiDirectComingleDirectory.retrieveDir(0);
+					;
+					// Join Task: IntroAtom Remote NoPrior Mono [(NewM::5)]added((NewM::5),(NewIP::6),(NewN::4))
+					send( new Added(newm,newm,newip,newn) ); 
+					// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]joined((NewM::5))
+					intro( new Joined(o,newm) );
+					// Join Task: IntroAtom Remote NoPrior Mono [(NewM::5)]connected()
+					send( new Connected(newm) ); 
+					// Join Task: IntroCompre Remote NoPrior Mono (M::8) (Ms::2) [(M::8)]added((NewM::5),(NewIP::6),(NewN::4))
+					SimpMultiset<Integer>  comp_0 = ms;
+					for(int idx=0; idx<comp_0.size(); idx++) {
+						m = comp_0.get(idx);
+						send( new Added(m,newm,newip,newn) ); 
+					}
+					// Join Task: IntroCompre Remote NoPrior Mono (M::10),(IP::9),(N::11) (Ds::7) [(NewM::5)]added((M::10),(IP::9),(N::11))
+					SimpMultiset<Tuple3<Integer,String,String> >  comp_1 = ds;
+					for(int idx=0; idx<comp_1.size(); idx++) {
+						Tuple3<Integer,String,String>  tup1;
+						tup1 = comp_1.get(idx);
+						m = tup1.t1;
+						ip = tup1.t2;
+						n = tup1.t3;
+						send( new Added(newm,m,ip,n) ); 
+					}
+					join_rule_count++;
+				}
+			} else {
+			}
+			cand_1 = candidates_1.get_next_alive();
+		}
+		return true;
+	}
+	
+	/*
+	**** 0 Join Ordering of Rule quitO ****
+	Rule Head Variables: (Ps::2), (C::1), (O::0)
+	Rule Head Compre Binders: (P::3)
+	Active #H0 [(O::0)]owner((C::1))
+	LookupAtom #H1 2:0:hash<[+]quit()|.>  (O::0) [(O::0)]quit()
+	LookupAll #H2 4:0:hash<[+]joined(-)|.>  (O::0) [(O::0)]joined((P::3))
+	CompreDomain #H2 (P::3) (Ps::2) [(O::0)]joined((P::3))
+	DeleteHead #H0
+	DeleteHead #H1
+	DeleteHead #H2
+	IntroCompre Remote NoPrior Mono (P::4) (Ps::2) [(P::4)]ownerQuit()
+	*/
+	protected boolean execute_owner_join_ordering_2(Owner act) {
+		
+		int p;
+		String c;
+		int o;
+		SimpMultiset<Integer>  ps;
+		// Join Task: Active #H0 [(O::0)]owner((C::1))
+		o = act.loc;
+		c = act.arg1;
+		// Join Task: LookupAtom #H1 2:0:hash<[+]quit()|.>  (O::0) [(O::0)]quit()
+		StoreIter<Quit> candidates_1 = quit_store_0.lookup_candidates(index0Quit(o));
+		Quit cand_1 = candidates_1.get_next_alive();
 		while(cand_1 != null) {
 			int o1;
 			o1 = cand_1.loc;
 			if (true) {
-				// Join Task: LookupAtom #H2 10:0:hash<[+]reqCode(-)|.>  (O::0) [(O::0)]reqCode((C::1))
-				StoreIter<ReqCode> candidates_2 = reqcode_store_0.lookup_candidates(index0ReqCode(o));
-				ReqCode cand_2 = candidates_2.get_next();
-				while(cand_2 != null) {
-					int o2;
-					o2 = cand_2.loc;
-					c = cand_2.arg1;
-					if (true) {
-						// Join Task: LookupAtom #H3 9:0:hash<[+]joinRequest(+,-,-)|.>  (O::0),(C::1) [(O::0)]joinRequest((C::1),(N::6),(M::7))
-						StoreIter<JoinRequest> candidates_3 = joinrequest_store_0.lookup_candidates(index0JoinRequest(o,c));
-						JoinRequest cand_3 = candidates_3.get_next_alive();
-						while(cand_3 != null) {
-							int o3;
-							String c3;
-							o3 = cand_3.loc;
-							c3 = cand_3.arg1;
-							n = cand_3.arg2;
-							m = cand_3.arg3;
-							if (Equality.is_eq(o,o3) && Equality.is_eq(c,c3)) {
-								// Join Task: LookupAll #H4 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-								StoreIter<Node> candidates_4 = node_store_0.lookup_candidates(index0Node(o));
-								// Join Task: CompreDomain #H4 (P::3) (Ps::2) [(O::0)]node((P::3))
-								ps = new SimpMultiset<Integer> ();
-								Node cand_4_0 = candidates_4.get_next_alive();
-								while(cand_4_0 != null) {
-									o = cand_4_0.loc;
-									p = cand_4_0.arg1;
-									ps.add( p );
-									cand_4_0 = candidates_4.get_next_alive();
-								}
-								candidates_4.init_iter();
-								// Join Task: LookupAll #H5 5:0:hash<[+]seen(-)|.>  (O::0) [(O::0)]seen((S::5))
-								StoreIter<Seen> candidates_5 = seen_store_0.lookup_candidates(index0Seen(o));
-								// Join Task: CompreDomain #H5 (S::5) (Ms::4) [(O::0)]seen((S::5))
-								ms = new SimpMultiset<String> ();
-								Seen cand_5_0 = candidates_5.get_next();
-								while(cand_5_0 != null) {
-									o = cand_5_0.loc;
-									s = cand_5_0.arg1;
-									ms.add( s );
-									cand_5_0 = candidates_5.get_next();
-								}
-								candidates_5.init_iter();
-								// Join Task: CheckGuard not((M::7) in (Ms::4))
-								if (ExtLib.not(ExtLib.in(m,ms))) {
-									// Join Task: DeleteHead #H0
-									// H0 is active and monotone, no delete required
-									// Join Task: DeleteHead #H3
-									joinrequest_store_0.remove( cand_3 );
-									// Join Task: LetBind (U::9) nextLoc((L::8))
-									u = WifiDirectComingleDirectory.nextLoc(l);
-									;
-									// Join Task: LetBind (IP::10) lookupIP((M::7))
-									ip = WifiDirectComingleDirectory.lookupIP(m);
-									;
-									// Join Task: LetBind (Ds::11) retrieveDir(0)
-									ds = WifiDirectComingleDirectory.retrieveDir(0);
-									;
-									// Join Task: IntroAtom Remote NoPrior Mono [(L::8)]added((L::8),(IP::10),(N::6),(M::7))
-									send( new Added(l,l,ip,n,m) ); 
-									// Join Task: IntroAtom Remote NoPrior Mono [(L::8)]you((L::8))
-									send( new You(l,l) ); 
-									// Join Task: IntroAtom Remote NoPrior Mono [(O::0)]next((U::9))
-									intro( new Next(o,u) );
-									// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]node((L::8))
-									intro( new Node(o,l) );
-									// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]seen((M::7))
-									intro( new Seen(o,m) );
-									// Join Task: IntroCompre Remote NoPrior Mono (P::12) (Ps::2) [(P::12)]added((L::8),(IP::10),(N::6),(M::7))
-									SimpMultiset<Integer>  comp_0 = ps;
-									for(int idx=0; idx<comp_0.size(); idx++) {
-										p = comp_0.get(idx);
-										send( new Added(p,l,ip,n,m) ); 
-									}
-									// Join Task: IntroCompre Remote NoPrior Mono (Lr::15),(Ir::14),(Nr::13),(Mr::16) (Ds::11) [(L::8)]added((Lr::15),(Ir::14),(Nr::13),(Mr::16))
-									SimpMultiset<Tuple4<Integer,String,String,String> >  comp_1 = ds;
-									for(int idx=0; idx<comp_1.size(); idx++) {
-										Tuple4<Integer,String,String,String>  tup5;
-										tup5 = comp_1.get(idx);
-										lr = tup5.t1;
-										ir = tup5.t2;
-										nr = tup5.t3;
-										mr = tup5.t4;
-										send( new Added(l,lr,ir,nr,mr) ); 
-									}
-									join_rule_count++;
-									return false;
-								}
-							} else {
-							}
-							cand_3 = candidates_3.get_next_alive();
-						}
-					}
-					cand_2 = candidates_2.get_next();
+				// Join Task: LookupAll #H2 4:0:hash<[+]joined(-)|.>  (O::0) [(O::0)]joined((P::3))
+				StoreIter<Joined> candidates_2 = joined_store_0.lookup_candidates(index0Joined(o));
+				// Join Task: CompreDomain #H2 (P::3) (Ps::2) [(O::0)]joined((P::3))
+				ps = new SimpMultiset<Integer> ();
+				Joined cand_2_0 = candidates_2.get_next_alive();
+				while(cand_2_0 != null) {
+					o = cand_2_0.loc;
+					p = cand_2_0.arg1;
+					ps.add( p );
+					cand_2_0 = candidates_2.get_next_alive();
 				}
+				candidates_2.init_iter();
+				// Join Task: DeleteHead #H0
+				// H0 is active and monotone, no delete required
+				// Join Task: DeleteHead #H1
+				quit_store_0.remove( cand_1 );
+				// Join Task: DeleteHead #H2
+				Joined cand_2_1 = candidates_2.get_next_alive();
+				while(cand_2_1 != null) {
+					joined_store_0.remove( cand_2_1 );
+					cand_2_1 = candidates_2.get_next_alive();
+				}
+				// Join Task: IntroCompre Remote NoPrior Mono (P::4) (Ps::2) [(P::4)]ownerQuit()
+				SimpMultiset<Integer>  comp_0 = ps;
+				for(int idx=0; idx<comp_0.size(); idx++) {
+					p = comp_0.get(idx);
+					send( new OwnerQuit(p) ); 
+				}
+				quitO_rule_count++;
+				return false;
 			}
-			cand_1 = candidates_1.get_next();
+			cand_1 = candidates_1.get_next_alive();
+		}
+		return true;
+	}
+	
+	/*
+	**** 0 Join Ordering of Rule join ****
+	Rule Head Variables: (C::1), (NewN::4), (Ms::2), (O::0), (NewM::5)
+	Rule Head Compre Binders: (M::3)
+	Active #H0 [(O::0)]joinRequest((C::1),(NewN::4),(NewM::5))
+	LookupAtom #H1 6:0:hash<[+]owner(+)|.>  (O::0),(C::1) [(O::0)]owner((C::1))
+	LookupAll #H2 4:0:hash<[+]joined(-)|.>  (O::0) [(O::0)]joined((M::3))
+	CompreDomain #H2 (M::3) (Ms::2) [(O::0)]joined((M::3))
+	CheckGuard not((NewM::5) in (Ms::2))
+	DeleteHead #H0
+	LetBind (NewIP::6) lookupIP((NewM::5))
+	LetBind (Ds::7) retrieveDir(0)
+	IntroAtom Remote NoPrior Mono [(NewM::5)]added((NewM::5),(NewIP::6),(NewN::4))
+	IntroAtom Remote NoPrior NonMono [(O::0)]joined((NewM::5))
+	IntroAtom Remote NoPrior Mono [(NewM::5)]connected()
+	IntroCompre Remote NoPrior Mono (M::8) (Ms::2) [(M::8)]added((NewM::5),(NewIP::6),(NewN::4))
+	IntroCompre Remote NoPrior Mono (M::10),(IP::9),(N::11) (Ds::7) [(NewM::5)]added((M::10),(IP::9),(N::11))
+	*/
+	protected boolean execute_joinrequest_join_ordering_1(JoinRequest act) {
+		
+		String newip;
+		String c;
+		String newn;
+		int newm;
+		String ip;
+		int m;
+		int o;
+		String n;
+		SimpMultiset<Integer>  ms;
+		SimpMultiset<Tuple3<Integer,String,String> >  ds;
+		// Join Task: Active #H0 [(O::0)]joinRequest((C::1),(NewN::4),(NewM::5))
+		o = act.loc;
+		c = act.arg1;
+		newn = act.arg2;
+		newm = act.arg3;
+		// Join Task: LookupAtom #H1 6:0:hash<[+]owner(+)|.>  (O::0),(C::1) [(O::0)]owner((C::1))
+		StoreIter<Owner> candidates_1 = owner_store_0.lookup_candidates(index0Owner(o,c));
+		Owner cand_1 = candidates_1.get_next_alive();
+		while(cand_1 != null) {
+			int o1;
+			String c1;
+			o1 = cand_1.loc;
+			c1 = cand_1.arg1;
+			if (Equality.is_eq(o,o1) && Equality.is_eq(c,c1)) {
+				// Join Task: LookupAll #H2 4:0:hash<[+]joined(-)|.>  (O::0) [(O::0)]joined((M::3))
+				StoreIter<Joined> candidates_2 = joined_store_0.lookup_candidates(index0Joined(o));
+				// Join Task: CompreDomain #H2 (M::3) (Ms::2) [(O::0)]joined((M::3))
+				ms = new SimpMultiset<Integer> ();
+				Joined cand_2_0 = candidates_2.get_next_alive();
+				while(cand_2_0 != null) {
+					o = cand_2_0.loc;
+					m = cand_2_0.arg1;
+					ms.add( m );
+					cand_2_0 = candidates_2.get_next_alive();
+				}
+				candidates_2.init_iter();
+				// Join Task: CheckGuard not((NewM::5) in (Ms::2))
+				if (ExtLib.not(ExtLib.in(newm,ms))) {
+					// Join Task: DeleteHead #H0
+					// H0 is active and monotone, no delete required
+					// Join Task: LetBind (NewIP::6) lookupIP((NewM::5))
+					newip = WifiDirectComingleDirectory.lookupIP(newm);
+					;
+					// Join Task: LetBind (Ds::7) retrieveDir(0)
+					ds = WifiDirectComingleDirectory.retrieveDir(0);
+					;
+					// Join Task: IntroAtom Remote NoPrior Mono [(NewM::5)]added((NewM::5),(NewIP::6),(NewN::4))
+					send( new Added(newm,newm,newip,newn) ); 
+					// Join Task: IntroAtom Remote NoPrior NonMono [(O::0)]joined((NewM::5))
+					intro( new Joined(o,newm) );
+					// Join Task: IntroAtom Remote NoPrior Mono [(NewM::5)]connected()
+					send( new Connected(newm) ); 
+					// Join Task: IntroCompre Remote NoPrior Mono (M::8) (Ms::2) [(M::8)]added((NewM::5),(NewIP::6),(NewN::4))
+					SimpMultiset<Integer>  comp_0 = ms;
+					for(int idx=0; idx<comp_0.size(); idx++) {
+						m = comp_0.get(idx);
+						send( new Added(m,newm,newip,newn) ); 
+					}
+					// Join Task: IntroCompre Remote NoPrior Mono (M::10),(IP::9),(N::11) (Ds::7) [(NewM::5)]added((M::10),(IP::9),(N::11))
+					SimpMultiset<Tuple3<Integer,String,String> >  comp_1 = ds;
+					for(int idx=0; idx<comp_1.size(); idx++) {
+						Tuple3<Integer,String,String>  tup2;
+						tup2 = comp_1.get(idx);
+						m = tup2.t1;
+						ip = tup2.t2;
+						n = tup2.t3;
+						send( new Added(newm,m,ip,n) ); 
+					}
+					join_rule_count++;
+					return false;
+				}
+			} else {
+			}
+			cand_1 = candidates_1.get_next_alive();
 		}
 		return true;
 	}
 	
 	/*
 	**** 0 Join Ordering of Rule exit ****
-	Rule Head Variables: (Ps::2), (M::1), (O::0)
-	Rule Head Compre Binders: (P::3)
-	Active #H0 [(O::0)]exit((M::1))
-	LookupAll #H1 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-	CompreDomain #H1 (P::3) (Ps::2) [(O::0)]node((P::3))
+	Rule Head Variables: (Ms::0), (O::2), (N::3)
+	Rule Head Compre Binders: (M::1)
+	Active #H0 [(O::2)]exit((N::3))
+	LookupAtom #H1 4:1:hash<[+]joined(+)|.>  (O::2),(N::3) [(O::2)]joined((N::3))
+	LookupAll #H2 4:0:hash<[+]joined(-)|.>  (O::2) [(O::2)]joined((M::1))
+	FilterHead #H2 #H1
+	FilterGuard #H2 not((M::1) == (N::3))
+	CompreDomain #H2 (M::1) (Ms::0) [(O::2)]joined((M::1))
 	DeleteHead #H0
 	DeleteHead #H1
-	LetBind (Bs::4) diff(((Ps::2),{(M::1)}))
-	IntroCompre Remote NoPrior Mono (B::5) (Bs::4) [(B::5)]removed((M::1))
-	IntroCompre Remote NoPrior NonMono (B::6) (Bs::4) [(O::0)]node((B::6))
+	IntroAtom Remote NoPrior Mono [(N::3)]deleteDir()
+	IntroCompre Remote NoPrior Mono (M::4) (Ms::0) [(M::4)]removed((N::3))
 	*/
 	protected boolean execute_exit_join_ordering_1(Exit act) {
 		
-		SimpMultiset<Integer>  ps;
-		int b;
 		int m;
+		SimpMultiset<Integer>  ms;
 		int o;
-		int p;
-		SimpMultiset<Integer>  bs;
-		// Join Task: Active #H0 [(O::0)]exit((M::1))
+		int n;
+		// Join Task: Active #H0 [(O::2)]exit((N::3))
 		o = act.loc;
-		m = act.arg1;
-		// Join Task: LookupAll #H1 4:0:hash<[+]node(-)|.>  (O::0) [(O::0)]node((P::3))
-		StoreIter<Node> candidates_1 = node_store_0.lookup_candidates(index0Node(o));
-		// Join Task: CompreDomain #H1 (P::3) (Ps::2) [(O::0)]node((P::3))
-		ps = new SimpMultiset<Integer> ();
-		Node cand_1_0 = candidates_1.get_next_alive();
-		while(cand_1_0 != null) {
-			o = cand_1_0.loc;
-			p = cand_1_0.arg1;
-			ps.add( p );
-			cand_1_0 = candidates_1.get_next_alive();
+		n = act.arg1;
+		// Join Task: LookupAtom #H1 4:1:hash<[+]joined(+)|.>  (O::2),(N::3) [(O::2)]joined((N::3))
+		StoreIter<Joined> candidates_1 = joined_store_1.lookup_candidates(index1Joined(o,n));
+		Joined cand_1 = candidates_1.get_next_alive();
+		while(cand_1 != null) {
+			int o1;
+			int n1;
+			o1 = cand_1.loc;
+			n1 = cand_1.arg1;
+			if (Equality.is_eq(o,o1) && Equality.is_eq(n,n1)) {
+				// Join Task: LookupAll #H2 4:0:hash<[+]joined(-)|.>  (O::2) [(O::2)]joined((M::1))
+				StoreIter<Joined> candidates_2 = joined_store_0.lookup_candidates(index0Joined(o));
+				// Join Task: FilterHead #H2 #H1
+				ListStoreIter<Joined> candidates_2_0 = new ListStoreIter<Joined>();
+				Joined cand_2_0 = candidates_2.get_next_alive();
+				while(cand_2_0 != null) {
+					o = cand_2_0.loc;
+					m = cand_2_0.arg1;
+					if ((cand_2_0).identity() != (cand_1).identity() ) {
+						candidates_2_0.add( cand_2_0 );
+					}
+					cand_2_0 = candidates_2.get_next_alive();
+				}
+				candidates_2_0.init_iter();
+				// Join Task: FilterGuard #H2 not((M::1) == (N::3))
+				ListStoreIter<Joined> candidates_2_0_1 = new ListStoreIter<Joined>();
+				Joined cand_2_1 = candidates_2_0.get_next_alive();
+				while(cand_2_1 != null) {
+					o = cand_2_1.loc;
+					m = cand_2_1.arg1;
+					if (ExtLib.not(Equality.is_eq(m,n))) {
+						candidates_2_0_1.add( cand_2_1 );
+					}
+					cand_2_1 = candidates_2_0.get_next_alive();
+				}
+				candidates_2_0_1.init_iter();
+				// Join Task: CompreDomain #H2 (M::1) (Ms::0) [(O::2)]joined((M::1))
+				ms = new SimpMultiset<Integer> ();
+				Joined cand_2_2 = candidates_2_0_1.get_next_alive();
+				while(cand_2_2 != null) {
+					o = cand_2_2.loc;
+					m = cand_2_2.arg1;
+					ms.add( m );
+					cand_2_2 = candidates_2_0_1.get_next_alive();
+				}
+				candidates_2_0_1.init_iter();
+				// Join Task: DeleteHead #H0
+				// H0 is active and monotone, no delete required
+				// Join Task: DeleteHead #H1
+				joined_store_0.remove( cand_1 );
+				// Join Task: IntroAtom Remote NoPrior Mono [(N::3)]deleteDir()
+				send( new DeleteDir(n) ); 
+				// Join Task: IntroCompre Remote NoPrior Mono (M::4) (Ms::0) [(M::4)]removed((N::3))
+				SimpMultiset<Integer>  comp_0 = ms;
+				for(int idx=0; idx<comp_0.size(); idx++) {
+					m = comp_0.get(idx);
+					send( new Removed(m,n) ); 
+				}
+				exit_rule_count++;
+				return false;
+			} else {
+			}
+			cand_1 = candidates_1.get_next_alive();
 		}
-		candidates_1.init_iter();
-		// Join Task: DeleteHead #H0
-		// H0 is active and monotone, no delete required
-		// Join Task: DeleteHead #H1
-		Node cand_1_1 = candidates_1.get_next_alive();
-		while(cand_1_1 != null) {
-			node_store_0.remove( cand_1_1 );
-			cand_1_1 = candidates_1.get_next_alive();
-		}
-		// Join Task: LetBind (Bs::4) diff(((Ps::2),{(M::1)}))
-		Integer[] temp1 = { m };
-		bs = ExtLib.diff(ps,Misc.to_mset(temp1));
-		;
-		// Join Task: IntroCompre Remote NoPrior Mono (B::5) (Bs::4) [(B::5)]removed((M::1))
-		SimpMultiset<Integer>  comp_0 = bs;
-		for(int idx=0; idx<comp_0.size(); idx++) {
-			b = comp_0.get(idx);
-			send( new Removed(b,m) ); 
-		}
-		// Join Task: IntroCompre Remote NoPrior NonMono (B::6) (Bs::4) [(O::0)]node((B::6))
-		SimpMultiset<Integer>  comp_1 = bs;
-		for(int idx=0; idx<comp_1.size(); idx++) {
-			b = comp_1.get(idx);
-			intro( new Node(o,b) );
-		}
-		exit_rule_count++;
-		return false;
-		
+		return true;
 	}
 	
 
@@ -3178,15 +2271,13 @@ public class P2pdirectory extends RewriteMachine {
 		}
 	}
 	
-	protected void execute(Node node) {
-		execute_node_join_ordering_1( node );
-		execute_node_join_ordering_2( node );
-		if( execute_node_join_ordering_3(node) ) {
+	protected void execute(Joined joined) {
+		execute_joined_join_ordering_1( joined );
+		if( execute_joined_join_ordering_2(joined) ) {
+			if( execute_joined_join_ordering_3(joined) ) {
+				execute_joined_join_ordering_4( joined );
+			}
 		}
-	}
-	
-	protected void execute(Seen seen) {
-		execute_seen_join_ordering_1( seen );
 	}
 	
 	protected void execute(Member member) {
@@ -3197,31 +2288,14 @@ public class P2pdirectory extends RewriteMachine {
 	
 	protected void execute(Owner owner) {
 		execute_owner_join_ordering_1( owner );
-		execute_owner_join_ordering_2( owner );
-		store( owner );
-	}
-	
-	protected void execute(OwnerAt ownerat) {
-		execute_ownerat_join_ordering_1( ownerat );
-		execute_ownerat_join_ordering_2( ownerat );
-		store( ownerat );
+		if( execute_owner_join_ordering_2(owner) ) {
+			store( owner );
+		}
 	}
 	
 	protected void execute(JoinRequest joinrequest) {
 		if( execute_joinrequest_join_ordering_1(joinrequest) ) {
 			store( joinrequest );
-		}
-	}
-	
-	protected void execute(ReqCode reqcode) {
-		execute_reqcode_join_ordering_1( reqcode );
-		execute_reqcode_join_ordering_2( reqcode );
-		store( reqcode );
-	}
-	
-	protected void execute(Next next) {
-		if( execute_next_join_ordering_1(next) ) {
-			store( next );
 		}
 	}
 	

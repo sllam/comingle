@@ -1,3 +1,29 @@
+/**
+This file is part of CoMingle.
+
+CoMingle is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+CoMingle is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with CoMingle. If not, see <http://www.gnu.org/licenses/>.
+
+CoMingle Version 1.0, Beta Prototype
+
+Authors:
+Edmund S. L. Lam      sllam@qatar.cmu.edu
+
+* This implementation was made possible by an JSREP grant (JSREP 4-003-2-001, Effective Distributed 
+Programming via Join Patterns with Guards, Propagation and More) from the Qatar National Research Fund 
+(a member of the Qatar Foundation). The statements made herein are solely the responsibility of the authors.
+**/
+
 package p2pdirectory;
 
 import java.net.InetAddress;
@@ -5,6 +31,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 import comingle.actuation.ActuatorAction;
 import comingle.facts.SerializedFact;
@@ -12,6 +39,7 @@ import comingle.mset.SimpMultiset;
 import comingle.nodes.SendListener;
 import comingle.rewrite.QuiescenceEvent;
 import comingle.rewrite.QuiescenceListener;
+import comingle.tuple.Tuple3;
 import comingle.tuple.Tuple4;
 import comingle.tuple.Unit;
 
@@ -44,24 +72,35 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 		return loc+1;
 	}
 	
-	public static int ownerLoc(int i) { return OWNER_LOC;  }
+	public static int ownerLoc(int i) { return ownerMacHash;  }
 	
-	private final static Map<String,String> macToIP = new HashMap<String,String>();
+	private final static Map<Integer,String> macHashToIP = new HashMap<Integer,String>();
 	private static List<NodeInfo> nodeDirList = null;
+	private static int ownerMacHash = -1;
 	
-	public static String lookupIP(String mac) {
-		return macToIP.get(mac);
+	public static String lookupIP(int macHash) {
+		return macHashToIP.get(macHash);
+	}
+	
+	private static void setOwnerMacHash(String mac) {
+		ownerMacHash = macHash(mac);
 	}
 	
 	private static void setNodeDirList(List<NodeInfo> nodes) {
 		nodeDirList = nodes;
 	}
 	
-	public static SimpMultiset<Tuple4<Integer,String,String,String>> retrieveDir(int i) {
-		SimpMultiset<Tuple4<Integer,String,String,String>> mset = new SimpMultiset<Tuple4<Integer,String,String,String>>();
+	public static int macHash(String mac) {
+		String[] macComp = mac.split(":");
+		String macHash = (macComp[2].substring(1))+ macComp[3] + macComp[4] + macComp[5];
+		return Integer.parseInt(macHash, 16);
+	}
+	
+	public static SimpMultiset<Tuple3<Integer,String,String>> retrieveDir(int i) {
+		SimpMultiset<Tuple3<Integer,String,String>> mset = new SimpMultiset<Tuple3<Integer,String,String>>();
 		synchronized(nodeDirList) {
 			for(NodeInfo node: nodeDirList) {
-				mset.add( new Tuple4<Integer,String,String,String>(node.location, node.ip_address, node.name, node.mac) );
+				mset.add( new Tuple3<Integer,String,String>(node.location, node.ip_address, node.name) );
 			}
 		}
 		return mset;
@@ -85,15 +124,14 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 	
 	private void initP2pDir() {
 		
-		p2pDir.setAddedActuator(new ActuatorAction<Tuple4<Integer,String,String,String>>() {
+		p2pDir.setAddedActuator(new ActuatorAction<Tuple3<Integer,String,String>>() {
 			@Override
-			public void doAction(Tuple4<Integer, String, String, String> tup) {
+			public void doAction(Tuple3<Integer, String, String> tup) {
 				int loc       = tup.t1; 
 				String ipAddr = tup.t2;
 				String name   = tup.t3;
-				String mac    = tup.t4;
-				String role   = showRole(locRole(loc));
-				NodeInfo newNode = new NodeInfo(loc, ipAddr, name, mac, role);
+				String role   = showRole(MEMBER_ROLE);
+				NodeInfo newNode = new NodeInfo(loc, ipAddr, name, String.format("%s", loc), role);
 				addNode( newNode );
 				List<NodeInfo> newNodes = new LinkedList<NodeInfo>();
 				newNodes.add( newNode );
@@ -114,15 +152,15 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 			}
 		});
 		
-		p2pDir.setYouActuator(new ActuatorAction<Integer>() {
+		p2pDir.setConnectedActuator(new ActuatorAction<Unit>() {
 			@Override
-			public void doAction(Integer myLocation) {
+			public void doAction(Unit input) {
 				// NodeInfo myNode = getNode(myLocation);
 				// setLocalNode(myNode);
 				// setIsConnected(true);
 				setAccepted();
 				// doConnectionEstablishedActions(myNode);
-				setMyLocation(myLocation);
+				// setMyLocation(myLocation);
 			}
 		});
 		
@@ -132,6 +170,13 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 				NodeInfo ownerNode = getNode(OWNER_LOC);
 				setIsConnected(false);
 				doOwnerTerminationActions( ownerNode );
+			}
+		});
+		
+		p2pDir.setDeleteDirActuator(new ActuatorAction<Unit>() {
+			@Override
+			public void doAction(Unit input) {
+				
 			}
 		});
 	
@@ -153,15 +198,26 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 	
 	private void startP2pDir(WifiP2pGroup group, int role) {
 		WifiP2pDevice ownerDevice = group.getOwner();
-		NodeInfo ownerInfo = new NodeInfo(OWNER_LOC, OWNER_IP, ownerDevice.deviceName, ownerDevice.deviceAddress
-				                         ,showRole(OWNER_ROLE));
-		addNode(ownerInfo);
 		
 		int initLoc   = DEFAULT_LOCATION;
 		String initIP = DEFAULT_IP;
+		
+		setOwnerMacHash( ownerDevice.deviceAddress );
+		
 		if(isOwner()) {
-			initLoc = OWNER_LOC;
+			local.location = WifiDirectComingleDirectory.macHash( ownerDevice.deviceAddress );
+			initLoc = local.location;
 			initIP  = ownerIP;
+			myLocation = initLoc;
+		} else {
+			int ownerLoc = WifiDirectComingleDirectory.macHash( ownerDevice.deviceAddress );
+			NodeInfo ownerInfo = new NodeInfo(ownerLoc, ownerIP, ownerDevice.deviceName, ownerDevice.deviceAddress
+					                         ,showRole(OWNER_ROLE));
+			addNode(ownerInfo);
+			
+			initLoc = WifiDirectComingleDirectory.macHash( thisDevice.deviceAddress );
+			initIP  = DEFAULT_IP;
+			myLocation = initLoc;
 		}
 		
 		HashMap<Integer,String> neighbors = getNodeMap();
@@ -183,7 +239,10 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 		p2pDir.start();
 
 		switch(role) {
-		case OWNER_ROLE: p2pDir.addStartOwner(reqCode); break;
+		case OWNER_ROLE: 
+			p2pDir.addStartOwner(reqCode); 
+			Log.v(TAG,String.format("Owner started at location %s", local.location));
+			break;
 		case MEMBER_ROLE: p2pDir.addStartMember(reqCode); break;
 	}
 		
@@ -204,7 +263,7 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 		setLocalNode(local);
 		p2pDir.updateLocation(local.location);
 		p2pDir.updateHostAddress(local.ip_address);
-		p2pDir.addStartMember(reqCode);
+		// p2pDir.addStartMember(reqCode);
 		setIsConnected(true);
 		doConnectionEstablishedActions(local);
 		doLocalNodeInfoAvailableActions();
@@ -216,8 +275,8 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 		for(SerializedFact fact: facts) { output += fact.toString() + " "; }
 		Log.v(TAG, String.format("Received from %s: %s", addr.getHostAddress(), output));
 		for(SerializedFact fact: facts) {
-			if(fact.fact_idx == 9) {
-				macToIP.put((String) fact.arguments[2], addr.getHostAddress());
+			if(fact.fact_idx == 7) {
+				macHashToIP.put((Integer) fact.arguments[2], addr.getHostAddress());
 			}
 		}
 		p2pDir.addExternalGoals(facts);
@@ -234,8 +293,8 @@ public class WifiDirectComingleDirectory extends BaseDirectory<SerializedFact>  
 
 		int count = 0;
 		while((count <= tries && !isAccepted()) || tries < 0) {
-			Log.v(TAG,String.format("Sending connect message: (%s,%s)", thisDevice.deviceName, thisDevice.deviceAddress) );
-			p2pDir.addConnect(thisDevice.deviceName, thisDevice.deviceAddress);
+			Log.v(TAG,String.format("Sending connect message %s to %s", thisDevice.deviceName, ownerMacHash) );
+			p2pDir.addConnect(thisDevice.deviceName);
 			sleep(time_out);
 			count++;
 		}
