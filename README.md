@@ -96,5 +96,7 @@ Special thanks to the following:
     http://www.javacodegeeks.com/2013/06/android-listview-tutorial-and-basic-example.html
   - Nithya Vasudevan, for helpful tips on android expandable list views, at
     http://theopentutorials.com/tutorials/android/listview/android-expandable-list-view-example/
+  - People who made Chrome Racer (http://www.chrome.com/racer). It inspired our demo app Drag-Racing.
+    But of course, Drag-Racing is no where as sleek as Chrome Racer.
 
 
