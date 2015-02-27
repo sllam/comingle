@@ -10,6 +10,20 @@ By Edmund S. L. Lam (sllam@qatar.cmu.edu) and
 Programming via Join Patterns with Guards, Propagation and More) from the Qatar National Research Fund 
 (a member of the Qatar Foundation).
 
+What is CoMingle?
+=================
+
+CoMingle is a logic programming framework aimed at simplifying the development of applications distributed over
+multiple mobile devices. Applications are written as a single declarative program (in a system-centric way) rather
+than in the traditional node-centric manner, where separate communicating code is written for each participating node.
+CoMingle is based on committed-choice multiset rewriting and is founded on linear logic.
+
+CoMingle is greatly influenced by Linear Meld, a distributed logic programming for distributed graph algorithms. 
+It is also a descendant of CHR (Constraint Handling Rules), a constraint programming language targeting traditional 
+constraint solving problems. CoMingle extends CHR with multiset comprehension, explicit locations, and
+mechanisms (known as triggers and actuators) that allows its decentralized multiset rewriting semantics to
+interact with an Android application.
+
 Contents
 ========
 
@@ -20,6 +34,7 @@ to get you started Comingling. Here's a summary of what it contains:
    - comingle_runtime: .jar libraries of the Comingle runtime
    - examples: basic examples of Comingle programs
    - android_apps: small repository of android programs (eclipse project + .apk), orchestrated by Comingle.
+   - papers: a repository of CoMingle research papers and technical reports
 
 To install and use Comingle, please follow the 'Getting Started' instructions below. If you want to go
 straight into playing the Android Apps, follow the instructions in the Readme file at 
