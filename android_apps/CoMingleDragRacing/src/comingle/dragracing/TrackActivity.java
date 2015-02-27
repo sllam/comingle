@@ -229,7 +229,7 @@ public class TrackActivity extends FragmentActivity {
     	dragracingRuntime = new WifiDirectComingleRuntime<Dragracing>(this, Dragracing.class, DR_REQ_CODE, WifiDirectDirectory.OWNER_IP
     			                                                     ,DR_ADMIN_PORT, DR_FACT_PORT);
 		dragracingRuntime.initWifiDirectEnvironent();
-		dragracingRuntime.getDirectory().addNetworkStatusChangedListener(new NetworkStatusChangedListener() {
+		dragracingRuntime.addNetworkStatusChangedListener(new NetworkStatusChangedListener() {
 			@Override
 			public void doWifiAdapterStatusChangedAction(boolean enabled) {
 				/*if(!enabled && !postedWifiComplaint) {
@@ -243,7 +243,7 @@ public class TrackActivity extends FragmentActivity {
 				}
 			}
 		});
-    	dragracingRuntime.getDirectory().addLocalNodeInfoAvailableListener(new LocalNodeInfoAvailableListener() {
+    	dragracingRuntime.addLocalNodeInfoAvailableListener(new LocalNodeInfoAvailableListener() {
 			@Override
 			public void doLocalNodeInfoAvailableAction(NodeInfo local, final int role) {
 				self.runOnUiThread(new Runnable() {
@@ -255,7 +255,7 @@ public class TrackActivity extends FragmentActivity {
 				});
 			}
     	});
-    	dragracingRuntime.getDirectory().addDirectoryChangedListener(new DirectoryChangedListener() {
+    	dragracingRuntime.addDirectoryChangedListener(new DirectoryChangedListener() {
 			@Override
 			public void doDirectoryChangedAction(final List<NodeInfo> new_peers,
 					List<NodeInfo> added_nodes, final List<NodeInfo> dropped_nodes, int role) {
@@ -282,14 +282,9 @@ public class TrackActivity extends FragmentActivity {
     	   public boolean onTouch(View v, MotionEvent event) {
     		   switch(event.getAction()) {
     		   		case MotionEvent.ACTION_DOWN: 
-    		   			if (!self.breaksOn()) {
+    		   			if (!released()) {
     		   			  dragracingRuntime.getRewriteMachine().addSendTap();
     		   			}
-    		   			// self.recordTimePressed();
-    		   			return true;
-    		   		case MotionEvent.ACTION_UP:
-    		   			// rm.add_sendtoggle(self.getLoc(), false);
-    		   			// self.reportTimeReleased();
     		   			return true;
     		   }
     		   return true;
@@ -301,51 +296,44 @@ public class TrackActivity extends FragmentActivity {
     	
     	dragracingRuntime.initRewriteMachine();
     	
-    	final TrackActivity self = this;
-    	
     	ActuatorAction<LinkedList<Integer>> renderTrackAction = new ActuatorAction<LinkedList<Integer>>() {
 			@Override
 			public void doAction(LinkedList<Integer> locs) {
-				self.renderTrack(locs);
+				renderTrack(locs);
 			}    		
     	};
-    	// dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.rendertrack, renderTrackAction);
     	dragracingRuntime.getRewriteMachine().setRenderTrackActuator(renderTrackAction);
     	
     	ActuatorAction<Unit> releaseAction = new ActuatorAction<Unit>() {
 			@Override
 			public void doAction(Unit arg0) {
-				self.countDown(0);
+				release();
 			}
     	};
-    	// dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.release, releaseAction);
     	dragracingRuntime.getRewriteMachine().setReleaseActuator(releaseAction);
     	
     	ActuatorAction<Integer> recvTapAction = new ActuatorAction<Integer>() {
 			@Override
 			public void doAction(Integer car_idx) {
-				self.toggleCar(car_idx, true);
+				tap(car_idx);
 			}
     	};
-    	// dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.recvtap, recvTapAction);
     	dragracingRuntime.getRewriteMachine().setRecvTapActuator(recvTapAction);
     	
     	ActuatorAction<Integer> hasAction = new ActuatorAction<Integer>() {
 			@Override
-			public void doAction(Integer car_idx) {
-				self.addCar(car_idx, true);
+			public void doAction(Integer player_idx) {
+				addPlayer(player_idx, true);
 			}
     	};
-    	// dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.has, hasAction);
     	dragracingRuntime.getRewriteMachine().setHasActuator(hasAction);
     	
     	ActuatorAction<Integer> decWinnerAction = new ActuatorAction<Integer>() {
 			@Override
 			public void doAction(Integer winner) {
-					self.declareWinner(winner);
+					declareWinner(winner);
 			}
     	};
-    	// dragracingRuntime.getRewriteMachine().setActuator(Dragracing.Actuations.decwinner, decWinnerAction);
     	dragracingRuntime.getRewriteMachine().setDecWinnerActuator(decWinnerAction);
     	
     	dragracingRuntime.startRewriteMachine();
@@ -647,7 +635,7 @@ public class TrackActivity extends FragmentActivity {
     
 	public void beginRace() {
 		this.gameStarted = true;
-		int myLoc = dragracingRuntime.getLocation();
+		// int myLoc = dragracingRuntime.getLocation();
 		LinkedList<Integer> locs = (LinkedList<Integer>) dragracingRuntime.getDirectory().getLocations();
 		dragracingRuntime.getRewriteMachine().addInitRace(locs);
 		this.setMenuItemVisibility(R.id.action_go, true);
@@ -719,9 +707,6 @@ public class TrackActivity extends FragmentActivity {
 				if (myLoc == 0) {
 					dragracingRuntime.getRewriteMachine().addGo();
 				}
-				return true;
-			case R.id.action_restart:
-				this.restartGame();
 				return true;
 		} 
 		return super.onOptionsItemSelected(item);
@@ -808,13 +793,13 @@ public class TrackActivity extends FragmentActivity {
 	}	
 	
 	// Car Methods
-	public void addCar(int loc) {
+	public void addPlayer(int loc) {
 		Car car = new Car(loc);
 		cars.addLast(car);
 		track_canvas.drawRect(car.getSprite(), car.getPaint());
 	}
 	
-	public void addCar(int loc, boolean acc) {
+	public void addPlayer(int loc, boolean acc) {
 		Car car = new Car(loc);
 		car.toggle(acc);
 		cars.addLast(car);
@@ -834,13 +819,10 @@ public class TrackActivity extends FragmentActivity {
 		}
 	}
 	
-	public void toggleCar(int loc, boolean acc) {
+	public void tap(int loc) {
 		for (Car car: cars) {
 			if (loc == car.getOwner()) {
-				// car.toggle(acc);
-				if (acc) {
-					car.impulse();
-				}
+				car.impulse();
 				return;
 			}
 		}
@@ -868,10 +850,12 @@ public class TrackActivity extends FragmentActivity {
 		});
 	}	
 	
+	public void release() { countDown(0); }
+	
 	public void setBrakes(boolean br) {
 		brakes = br;
 	}
 	
-	public boolean breaksOn() { return brakes; }
+	public boolean released() { return brakes; }
 	
 }
