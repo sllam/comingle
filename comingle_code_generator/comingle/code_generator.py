@@ -179,6 +179,14 @@ class JavaCodeGenerator:
 		self.it_idx  = 0
 		self.incl_logs = incl_logs
 
+	def next_anonymous_var_name(self, rule_idx=None):
+		if rule_idx == None:
+			var_name = "anon__v%s" % self.var_idx
+			self.var_idx += 1
+			return var_name;
+		else:
+			return "anon__%s" % rule_idx	
+	
 	def next_temp_var_name(self):
 		var_name = "temp%s" % self.var_idx
 		self.var_idx += 1
@@ -1044,9 +1052,25 @@ class JavaCodeGenerator:
 		return compile_template(receive_member_codes, receive_comm_codes=receive_comm_codes, num_of_comm=num_of_comm
                                        ,send_codes=send_codes, recv_codes=recv_codes)
 
+	@visit.on( 'term' )
+	def generate_term_lhs(self, term):
+		pass
+
+	@visit.when( ast.TermLit )
+	def generate_term_lhs(self, term):
+		return "%s" % term.literal
+
+	@visit.when( ast.TermVar )
+	def generate_term_lhs(self, term):
+		return mk_cpp_var_name(term.name)
+
+	@visit.when( ast.TermUnderscore )
+	def generate_term_lhs(self, term):
+		return self.next_anonymous_var_name(term.rule_idx)
+
 	def generate_fact_lhs(self, fact_idx, loc_fact, fact_var_name, head_idx, var_ctxt):
 		fact_info = self.fact_dict[fact_idx]
-		orig_pat_vars  = [mk_cpp_var_name(loc_fact.loc.name)] + map(lambda t: mk_cpp_var_name(t.name), loc_fact.fact.terms)
+		orig_pat_vars  = [mk_cpp_var_name(loc_fact.loc.name)] + map(lambda t: self.generate_term_lhs(t), loc_fact.fact.terms)
 
 		pat_types = [fact_info['loc_type']]+fact_info['type_codes']
 
@@ -1057,10 +1081,10 @@ class JavaCodeGenerator:
 		for i in range(0,len(orig_pat_vars)):
 			if orig_pat_vars[i] in var_ctxt:			
 				if orig_pat_vars[i] not in seen_dict:
-					mod_inits.append( "%s %s%s;" % (pat_types[i],orig_pat_vars[i],head_idx) )
-					idx_var_eq.append( "Equality.is_eq(%s,%s%s)" % (orig_pat_vars[i],orig_pat_vars[i],head_idx) )
+					mod_inits.append( "%s %s__%s;" % (pat_types[i],orig_pat_vars[i],head_idx) )
+					idx_var_eq.append( "Equality.is_eq(%s,%s__%s)" % (orig_pat_vars[i],orig_pat_vars[i],head_idx) )
 					seen_dict[orig_pat_vars[i]] = ()
-				mod_pat_vars.append( "%s%s" % (orig_pat_vars[i],head_idx) )
+				mod_pat_vars.append( "%s__%s" % (orig_pat_vars[i],head_idx) )
 			else:
 				mod_pat_vars.append( orig_pat_vars[i])
 
@@ -1111,7 +1135,8 @@ class JavaCodeGenerator:
 		rule_vars = join_ordering.rule_all_vars
 
 		for rule_var in rule_vars:
-			init_head_vars_codes.append( "%s %s;" % (java_type_coerce.coerce_type_codes( rule_var.type ), mk_cpp_var_name(rule_var.name) ) )
+			init_head_vars_codes.append( "%s %s;" % (java_type_coerce.coerce_type_codes( rule_var.type )
+                                                   , self.generate_term_lhs(rule_var) ) )
 
 		if self.needs_final_escape or join_ordering.is_active_prop:
 			escape_code = "return true;"
@@ -1662,12 +1687,14 @@ class JavaCodeGenerator:
 		# print "Hurry! %s" % compre_dom.type
 		compre_dom_type = java_type_corece.coerce_type_codes( compre_dom.type )
 		# print compre_dom_type
-		compre_dom_name = mk_cpp_var_name( compre_dom.name )
+		compre_dom_name = self.generate_term_lhs( compre_dom ) # mk_cpp_var_name( compre_dom.name )
 		if len(term_vars) > 1:
 			# TODO
-			compre_dom_elem = "Tuples.make_tuple(%s)" % (','.join(map(lambda tv: mk_cpp_var_name(tv.name),term_vars))) 
+			# compre_dom_elem = "Tuples.make_tuple(%s)" % (','.join(map(lambda tv: mk_cpp_var_name(tv.name),term_vars))) 
+			compre_dom_elem = "Tuples.make_tuple(%s)" % (','.join(map(lambda tv: self.generate_term_lhs(tv),term_vars))) 
 		else:
-			compre_dom_elem = mk_cpp_var_name(term_vars[0].name)
+			# compre_dom_elem = mk_cpp_var_name(term_vars[0].name)
+			compre_dom_elem = self.generate_term_lhs(term_vars[0])
 
 		init_binders_codes = []
 		if init_binders:
@@ -2095,6 +2122,9 @@ class JavaCodeGenerator:
 			cx1,t1_codes = self.generate_term( t.term )
 			context_codes = cx1
 			term_codes = "%s %s" % (t.op,t1_codes)
+		elif t.term_type == ast.TERM_UNDERSCORE:
+			context_codes = []
+			term_codes = self.next_anonymous_var_name(t.rule_idx)
 		elif t.term_type == ast.TERM_VAR:
 			context_codes = []
 			term_codes = mk_cpp_var_name( t.name )
