@@ -19,6 +19,8 @@ ensem pivotswap {
                                                                  [Y]display( format("Received %s items from %s", (size(XDs),X)) ),
                                                                  { [X]data(D) | D <- YDs }, { [Y]data(D) | D <- XDs }.
 
+	rule test :: [X]data(DA) \ [X]data(DB) --o 1.
+
 }
 
 execute pivotswap {

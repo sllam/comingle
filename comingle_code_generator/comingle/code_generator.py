@@ -76,6 +76,7 @@ import comingle.tuple.*;
 import comingle.misc.*;
 import comingle.mset.*;
 import comingle.actuation.*;
+import comingle.lib.*;
 ''')
 
 GENERATED_MESSAGE = template('''
@@ -113,6 +114,10 @@ BOILER_PLATE_CODES = template('''
 ''')
 
 BUILTIN_MODULES = ['comingle.lib.ExtLib']
+
+BUILTIN_FUNCS = { 'size' : { 'DirNames'      : ['comingle','lib']
+                           , 'ClassName'     : 'ExtLib' 
+                           , 'QualifiedName' : 'ExtLib.size' } }
 
 PRIME_NUMBERS = [7919,13259,31547,53173,72577,91099,103421,224737,350377,499979]
 
@@ -212,12 +217,14 @@ class JavaCodeGenerator:
 			class_name  = name_frags[len(name_frags)-1]
 			dir_names   = name_frags[:len(name_frags)-1]
 			if extern_name not in BUILTIN_MODULES:
-				self.extern_mods.append( { 'DirNames' : dir_names, 'ClassName'     : class_name } )
+				self.extern_mods.append( { 'DirNames' : dir_names, 'ClassName' : class_name } )
 			for type_sig in extern_dec.type_sigs:
 				qualified_name = "%s.%s" % (class_name,type_sig.name)
 				self.extern_dict[type_sig.name] = { 'DirNames'      : dir_names
                                                                   , 'ClassName'     : class_name
                                                                   , 'QualifiedName' : qualified_name }
+		for name in BUILTIN_FUNCS:
+			self.extern_dict[name] = BUILTIN_FUNCS[name]
 
 	def qualified_name(self, name):
 		if name in self.extern_dict:
@@ -1134,9 +1141,18 @@ class JavaCodeGenerator:
 		'''
 		rule_vars = join_ordering.rule_all_vars
 
+		init_vars = {}
 		for rule_var in rule_vars:
-			init_head_vars_codes.append( "%s %s;" % (java_type_coerce.coerce_type_codes( rule_var.type )
-                                                   , self.generate_term_lhs(rule_var) ) )
+			needed = False
+			if rule_var.term_type == ast.TERM_VAR:
+				if rule_var.name not in init_vars:
+					needed = True
+					init_vars[rule_var.name] = ()
+			else:
+				needed = True
+			if needed:
+				init_head_vars_codes.append( "%s %s;" % (java_type_coerce.coerce_type_codes( rule_var.type )
+        	                                           , self.generate_term_lhs(rule_var) ) )
 
 		if self.needs_final_escape or join_ordering.is_active_prop:
 			escape_code = "return true;"
