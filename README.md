@@ -24,6 +24,9 @@ constraint solving problems. CoMingle extends CHR with multiset comprehension, e
 mechanisms (known as triggers and actuators) that allows its decentralized multiset rewriting semantics to
 interact with an Android application.
 
+For details, please check out our technical report on Comingle: 
+http://reports-archive.adm.cs.cmu.edu/anon/2015/CMU-CS-15-101.pdf
+
 Contents
 ========
 
