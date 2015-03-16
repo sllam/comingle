@@ -11,6 +11,7 @@ ensem pivotswap {
 	predicate data    :: int -> fact. 
 	predicate display :: string -> actuator. 
 
+	export query swap(_,_).
 	export query data(_).
 
 	rule pivotSwap :: [X]swap(Y,P),
@@ -24,5 +25,5 @@ ensem pivotswap {
 }
 
 execute pivotswap {
-	exists L0, L1.
+	exists L0, L1, L2.
 }

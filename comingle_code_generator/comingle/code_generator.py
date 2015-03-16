@@ -139,7 +139,10 @@ def mk_ensem_name( name ):
 def mk_pred_name( name ):
 	pred_name = ""
 	for frag in split(name,'_'):
-		pred_name += frag[0].upper() + frag[1:]
+		if len(frag) > 0:
+			pred_name += frag[0].upper() + frag[1:]
+		else:
+			pred_name += "_"
 	return pred_name
 
 def mk_cpp_var_name( name ):
@@ -555,12 +558,23 @@ class JavaCodeGenerator:
 
 		self.ensem_fact_name = "%sFact" % ensem_name
 
-		source_codes = compile_template(template('''
+		if not prog.transformed:
+			source_codes = compile_template(template('''
 			/**
 			** This Comingle Runtime is generated from the following Comingle specifications:
 			{| prog_source_text |}
 			**/
-		'''), prog_source_text=prog.get_source())
+			'''), prog_source_text=prog.get_source())
+		else:
+			source_codes = compile_template(template('''
+			/**
+			** This Comingle Runtime is generated from the following Comingle system-centric specifications:
+			{| prog_origin_text |}
+
+			** It was intermediately transformed into the following Comingle node-centric specification:
+			{| prog_source_text |}
+			**/
+			'''), prog_origin_text=prog.origin_text, prog_source_text=prog.source_text)
 
 		# self.ensem_info[ensem_spec['ensem_name']] = self.fact_decs
 
