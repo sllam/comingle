@@ -47,12 +47,16 @@ ensem battleship {
 
 	rule dmgHit  :: [D]damaged(S,X,Y) \ [D]blastAt(A,X,Y) --o [D]hit(A,D,X,Y), [A]hit(A,D,X,Y).
 
-	rule sunk :: [D]all(Ps), { [D]damaged(S,X,Y)|(X,Y)<-Ds } \ [D]checkShip(A,S), 
-                     { [D]hull(S,W,V)|(W,V)<-Hs } | (size(Hs))==0
+	rule sunk1 :: [D]all(Ps), { [D]damaged(S,X,Y)|(X,Y)<-Ds } \ [D]checkShip(A,S), 
+                      { [D]hull(S,W,V)|(W,V)<-Hs } | (size(Hs))==0
                           --o { [P]sunk(A,D,S,Ds) | P <- Ps }, [D]checkFleet().
 
-	rule deadFleet :: [D]all(Ps), [D]checkFleet(), { [D]hull(S,X,Y)|(S,X,Y)<-Hs } | (size(Hs))==0
+	rule sunk2 :: [D]checkShip(A,S) --o 1.
+
+	rule deadFleet1 :: [D]all(Ps), [D]checkFleet(), { [D]hull(S,X,Y)|(S,X,Y)<-Hs } | (size(Hs))==0
                            --o { [P]notifyDead(D), [P]dead(D) | P <- Ps }.
+
+	rule deadFleet2 :: [D]checkFleet() --o 1.
 
 	rule winner :: [D]all(Ps), { [D]dead(O) | O->Os } | Ps==(union(Os,{D})) 
                            --o { [P]notifyWinner(D) | P<-Ps }.

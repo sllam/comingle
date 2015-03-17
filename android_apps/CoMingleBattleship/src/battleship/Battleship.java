@@ -13,6 +13,7 @@ import comingle.tuple.*;
 import comingle.misc.*;
 import comingle.mset.*;
 import comingle.actuation.*;
+import comingle.lib.*;
 
 import comingle.lib.ExtLib;
 
@@ -79,12 +80,16 @@ ensem battleship {
 
 	rule dmgHit  :: [D]damaged(S,X,Y) \ [D]blastAt(A,X,Y) --o [D]hit(A,D,X,Y), [A]hit(A,D,X,Y).
 
-	rule sunk :: [D]all(Ps), { [D]damaged(S,X,Y)|(X,Y)<-Ds } \ [D]checkShip(A,S), 
-                     { [D]hull(S,W,V)|(W,V)<-Hs } | (size(Hs))==0
+	rule sunk1 :: [D]all(Ps), { [D]damaged(S,X,Y)|(X,Y)<-Ds } \ [D]checkShip(A,S), 
+                      { [D]hull(S,W,V)|(W,V)<-Hs } | (size(Hs))==0
                           --o { [P]sunk(A,D,S,Ds) | P <- Ps }, [D]checkFleet().
 
-	rule deadFleet :: [D]all(Ps), [D]checkFleet(), { [D]hull(S,X,Y)|(S,X,Y)<-Hs } | (size(Hs))==0
+	rule sunk2 :: [D]checkShip(A,S) --o 1.
+
+	rule deadFleet1 :: [D]all(Ps), [D]checkFleet(), { [D]hull(S,X,Y)|(S,X,Y)<-Hs } | (size(Hs))==0
                            --o { [P]notifyDead(D), [P]dead(D) | P <- Ps }.
+
+	rule deadFleet2 :: [D]checkFleet() --o 1.
 
 	rule winner :: [D]all(Ps), { [D]dead(O) | O->Os } | Ps==(union(Os,{D})) 
                            --o { [P]notifyWinner(D) | P<-Ps }.
@@ -749,8 +754,10 @@ public class Battleship extends RewriteMachine {
 	protected int miss_rule_count;
 	protected int goodHit_rule_count;
 	protected int dmgHit_rule_count;
-	protected int sunk_rule_count;
-	protected int deadFleet_rule_count;
+	protected int sunk1_rule_count;
+	protected int sunk2_rule_count;
+	protected int deadFleet1_rule_count;
+	protected int deadFleet2_rule_count;
 	protected int winner_rule_count;
 	protected int rule_app_misses;
 
@@ -762,8 +769,10 @@ public class Battleship extends RewriteMachine {
 		miss_rule_count = 0;
 		goodHit_rule_count = 0;
 		dmgHit_rule_count = 0;
-		sunk_rule_count = 0;
-		deadFleet_rule_count = 0;
+		sunk1_rule_count = 0;
+		sunk2_rule_count = 0;
+		deadFleet1_rule_count = 0;
+		deadFleet2_rule_count = 0;
 		winner_rule_count = 0;
 		rule_app_misses = 0;
 	
@@ -1575,7 +1584,7 @@ public class Battleship extends RewriteMachine {
 
 	/*
 	**** 0 Join Ordering of Rule start ****
-	Rule Head Variables: (I::0), (C::3), (Ls::4), (G::1), (F::2)
+	Rule Head Variables: (I::0), (G::1), (F::2), (C::3), (Ls::4)
 	Rule Head Compre Binders: 
 	Active #H0 [(I::0)]initGame((G::1),(F::2),(C::3),(Ls::4))
 	DeleteHead #H0
@@ -1589,17 +1598,17 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_initgame_join_ordering_1(InitGame act) {
 		
-		int a;
-		SimpMultiset<Integer>  ps;
-		int c;
-		int b;
-		int e;
+		int i;
 		int g;
 		int f;
-		int i;
-		int l;
+		int c;
 		LinkedList<Integer>  ls;
 		SimpMultiset<Tuple2<Integer,Integer> >  cs;
+		int e;
+		SimpMultiset<Integer>  ps;
+		int a;
+		int b;
+		int l;
 		// Join Task: Active #H0 [(I::0)]initGame((G::1),(F::2),(C::3),(Ls::4))
 		i = act.loc;
 		g = act.arg1;
@@ -1646,7 +1655,7 @@ public class Battleship extends RewriteMachine {
 	
 	/*
 	**** 0 Join Ordering of Rule shoot ****
-	Rule Head Variables: (A::0), (X::3), (B::1), (Y::4), (D::2)
+	Rule Head Variables: (A::0), (B::1), (D::2), (X::3), (Y::4)
 	Rule Head Compre Binders: 
 	Active #H0 [(A::0)]fireAt((D::2),(X::3),(Y::4))
 	LookupAtom #H1 6:0:hash<[+]turn()|.>  (A::0) [(A::0)]turn()
@@ -1660,10 +1669,10 @@ public class Battleship extends RewriteMachine {
 	protected boolean execute_fireat_join_ordering_1(FireAt act) {
 		
 		int a;
-		int x;
 		int b;
-		int y;
 		int d;
+		int x;
+		int y;
 		// Join Task: Active #H0 [(A::0)]fireAt((D::2),(X::3),(Y::4))
 		a = act.loc;
 		d = act.arg1;
@@ -1673,15 +1682,15 @@ public class Battleship extends RewriteMachine {
 		StoreIter<Turn> candidates_1 = turn_store_0.lookup_candidates(index0Turn(a));
 		Turn cand_1 = candidates_1.get_next_alive();
 		while(cand_1 != null) {
-			int a1;
-			a1 = cand_1.loc;
+			int a__1;
+			a__1 = cand_1.loc;
 			if (true) {
 				// Join Task: LookupAtom #H2 5:0:hash<[+]next(-)|.>  (A::0) [(A::0)]next((B::1))
 				StoreIter<Next> candidates_2 = next_store_0.lookup_candidates(index0Next(a));
 				Next cand_2 = candidates_2.get_next();
 				while(cand_2 != null) {
-					int a2;
-					a2 = cand_2.loc;
+					int a__2;
+					a__2 = cand_2.loc;
 					b = cand_2.arg1;
 					if (true) {
 						// Join Task: DeleteHead #H0
@@ -1707,7 +1716,7 @@ public class Battleship extends RewriteMachine {
 	
 	/*
 	**** 1 Join Ordering of Rule miss ****
-	Rule Head Variables: (A::3), (X::1), (Y::2), (D::0)
+	Rule Head Variables: (D::0), (X::1), (Y::2), (A::3)
 	Rule Head Compre Binders: 
 	Active #H0 [(D::0)]empty((X::1),(Y::2))
 	LookupAtom #H1 4:0:hash<[+]blastAt(-,+,+)|.>  (D::0),(X::1),(Y::2) [(D::0)]blastAt((A::3),(X::1),(Y::2))
@@ -1717,10 +1726,10 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_empty_join_ordering_1(Empty act) {
 		
-		int a;
+		int d;
 		int x;
 		int y;
-		int d;
+		int a;
 		// Join Task: Active #H0 [(D::0)]empty((X::1),(Y::2))
 		d = act.loc;
 		x = act.arg1;
@@ -1729,14 +1738,14 @@ public class Battleship extends RewriteMachine {
 		StoreIter<BlastAt> candidates_1 = blastat_store_0.lookup_candidates(index0BlastAt(d,x,y));
 		BlastAt cand_1 = candidates_1.get_next_alive();
 		while(cand_1 != null) {
-			int d1;
-			int x1;
-			int y1;
-			d1 = cand_1.loc;
+			int d__1;
+			int x__1;
+			int y__1;
+			d__1 = cand_1.loc;
 			a = cand_1.arg1;
-			x1 = cand_1.arg2;
-			y1 = cand_1.arg3;
-			if (Equality.is_eq(d,d1) && Equality.is_eq(x,x1) && Equality.is_eq(y,y1)) {
+			x__1 = cand_1.arg2;
+			y__1 = cand_1.arg3;
+			if (Equality.is_eq(d,d__1) && Equality.is_eq(x,x__1) && Equality.is_eq(y,y__1)) {
 				// Join Task: DeleteHead #H1
 				blastat_store_0.remove( cand_1 );
 				// Join Task: IntroAtom Local NoPrior Mono [(D::0)]missed((A::3),(D::0),(X::1),(Y::2))
@@ -1753,7 +1762,7 @@ public class Battleship extends RewriteMachine {
 	
 	/*
 	**** 1 Join Ordering of Rule goodHit ****
-	Rule Head Variables: (A::1), (X::2), (S::4), (Y::3), (D::0)
+	Rule Head Variables: (D::0), (A::1), (X::2), (Y::3), (S::4)
 	Rule Head Compre Binders: 
 	Active #H0 [(D::0)]hull((S::4),(X::2),(Y::3))
 	LookupAtom #H1 4:0:hash<[+]blastAt(-,+,+)|.>  (D::0),(X::2),(Y::3) [(D::0)]blastAt((A::1),(X::2),(Y::3))
@@ -1766,11 +1775,11 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_hull_join_ordering_1(Hull act) {
 		
+		int d;
 		int a;
 		int x;
-		String s;
 		int y;
-		int d;
+		String s;
 		// Join Task: Active #H0 [(D::0)]hull((S::4),(X::2),(Y::3))
 		if (act.is_alive()) {
 			d = act.loc;
@@ -1781,14 +1790,14 @@ public class Battleship extends RewriteMachine {
 			StoreIter<BlastAt> candidates_1 = blastat_store_0.lookup_candidates(index0BlastAt(d,x,y));
 			BlastAt cand_1 = candidates_1.get_next_alive();
 			while(cand_1 != null) {
-				int d1;
-				int x1;
-				int y1;
-				d1 = cand_1.loc;
+				int d__1;
+				int x__1;
+				int y__1;
+				d__1 = cand_1.loc;
 				a = cand_1.arg1;
-				x1 = cand_1.arg2;
-				y1 = cand_1.arg3;
-				if (Equality.is_eq(d,d1) && Equality.is_eq(x,x1) && Equality.is_eq(y,y1)) {
+				x__1 = cand_1.arg2;
+				y__1 = cand_1.arg3;
+				if (Equality.is_eq(d,d__1) && Equality.is_eq(x,x__1) && Equality.is_eq(y,y__1)) {
 					// Join Task: DeleteHead #H0
 					hull_store_0.remove( act );
 					// Join Task: DeleteHead #H1
@@ -1812,9 +1821,9 @@ public class Battleship extends RewriteMachine {
 	}
 	
 	/*
-	**** 2 Join Ordering of Rule sunk ****
-	Rule Head Variables: (A::6), (Ps::1), (D::0), (Hs::7), (S::5), (Ds::2)
-	Rule Head Compre Binders: (Y::3), (X::4), (W::8), (V::9)
+	**** 2 Join Ordering of Rule sunk1 ****
+	Rule Head Variables: (D::0), (Ps::1), (Ds::2), (S::5), (A::6), (Hs::7)
+	Rule Head Compre Binders: (W::8), (V::9), (Y::3), (X::4)
 	Active #H0 [(D::0)]hull((S::5),(W::8),(V::9))
 	LookupAtom #H1 9:1:hash<[+]checkShip(-,+)|.>  (D::0),(S::5) [(D::0)]checkShip((A::6),(S::5))
 	LookupAtom #H2 7:0:hash<[+]all(-)|.>  (D::0) [(D::0)]all((Ps::1))
@@ -1830,17 +1839,17 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_hull_join_ordering_2(Hull act) {
 		
-		int a;
-		SimpMultiset<Integer>  ps;
 		int d;
-		SimpMultiset<Tuple2<Integer,Integer> >  hs;
-		int p;
-		String s;
-		int w;
-		int v;
+		SimpMultiset<Integer>  ps;
+		SimpMultiset<Tuple2<Integer,Integer> >  ds;
 		int y;
 		int x;
-		SimpMultiset<Tuple2<Integer,Integer> >  ds;
+		String s;
+		int a;
+		SimpMultiset<Tuple2<Integer,Integer> >  hs;
+		int w;
+		int v;
+		int p;
 		// Join Task: Active #H0 [(D::0)]hull((S::5),(W::8),(V::9))
 		if (act.is_alive()) {
 			d = act.loc;
@@ -1851,18 +1860,18 @@ public class Battleship extends RewriteMachine {
 			StoreIter<CheckShip> candidates_1 = checkship_store_1.lookup_candidates(index1CheckShip(d,s));
 			CheckShip cand_1 = candidates_1.get_next_alive();
 			while(cand_1 != null) {
-				int d1;
-				String s1;
-				d1 = cand_1.loc;
+				int d__1;
+				String s__1;
+				d__1 = cand_1.loc;
 				a = cand_1.arg1;
-				s1 = cand_1.arg2;
-				if (Equality.is_eq(d,d1) && Equality.is_eq(s,s1)) {
+				s__1 = cand_1.arg2;
+				if (Equality.is_eq(d,d__1) && Equality.is_eq(s,s__1)) {
 					// Join Task: LookupAtom #H2 7:0:hash<[+]all(-)|.>  (D::0) [(D::0)]all((Ps::1))
 					StoreIter<All> candidates_2 = all_store_0.lookup_candidates(index0All(d));
 					All cand_2 = candidates_2.get_next_alive();
 					while(cand_2 != null) {
-						int d2;
-						d2 = cand_2.loc;
+						int d__2;
+						d__2 = cand_2.loc;
 						ps = cand_2.arg1;
 						if (true) {
 							// Join Task: LookupAll #H3 3:1:hash<[+]hull(+,-,-)|.>  (D::0),(S::5) [(D::0)]hull((S::5),(W::8),(V::9))
@@ -1870,13 +1879,13 @@ public class Battleship extends RewriteMachine {
 							ListStoreIter<Hull> candidates_3_0 = new ListStoreIter<Hull>();
 							Hull cand_3 = candidates_3.get_next_alive();
 							while(cand_3 != null) {
-								int d3;
-								String s3;
-								d3 = cand_3.loc;
-								s3 = cand_3.arg1;
+								int d__3;
+								String s__3;
+								d__3 = cand_3.loc;
+								s__3 = cand_3.arg1;
 								w = cand_3.arg2;
 								v = cand_3.arg3;
-								if (Equality.is_eq(d,d3) && Equality.is_eq(s,s3)) {
+								if (Equality.is_eq(d,d__3) && Equality.is_eq(s,s__3)) {
 									candidates_3_0.add( cand_3 );
 								}
 								cand_3 = candidates_3.get_next_alive();
@@ -1901,13 +1910,13 @@ public class Battleship extends RewriteMachine {
 								ListStoreIter<Damaged> candidates_4_0 = new ListStoreIter<Damaged>();
 								Damaged cand_4 = candidates_4.get_next();
 								while(cand_4 != null) {
-									int d4;
-									String s4;
-									d4 = cand_4.loc;
-									s4 = cand_4.arg1;
+									int d__4;
+									String s__4;
+									d__4 = cand_4.loc;
+									s__4 = cand_4.arg1;
 									x = cand_4.arg2;
 									y = cand_4.arg3;
-									if (Equality.is_eq(d,d4) && Equality.is_eq(s,s4)) {
+									if (Equality.is_eq(d,d__4) && Equality.is_eq(s,s__4)) {
 										candidates_4_0.add( cand_4 );
 									}
 									cand_4 = candidates_4.get_next();
@@ -1941,7 +1950,7 @@ public class Battleship extends RewriteMachine {
 									p = comp_0.get(idx);
 									send( new Sunk(p,a,d,s,ds) ); 
 								}
-								sunk_rule_count++;
+								sunk1_rule_count++;
 								return false;
 							}
 						}
@@ -1956,8 +1965,8 @@ public class Battleship extends RewriteMachine {
 	}
 	
 	/*
-	**** 2 Join Ordering of Rule deadFleet ****
-	Rule Head Variables: (Ps::1), (D::0), (Hs::2)
+	**** 2 Join Ordering of Rule deadFleet1 ****
+	Rule Head Variables: (D::0), (Ps::1), (Hs::2)
 	Rule Head Compre Binders: (Y::3), (X::4), (S::5)
 	Active #H0 [(D::0)]hull((S::5),(X::4),(Y::3))
 	LookupAtom #H1 10:0:hash<[+]checkFleet()|.>  (D::0) [(D::0)]checkFleet()
@@ -1972,13 +1981,13 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_hull_join_ordering_3(Hull act) {
 		
-		SimpMultiset<Integer>  ps;
 		int d;
+		SimpMultiset<Integer>  ps;
 		SimpMultiset<Tuple3<String,Integer,Integer> >  hs;
-		int p;
-		String s;
 		int y;
 		int x;
+		String s;
+		int p;
 		// Join Task: Active #H0 [(D::0)]hull((S::5),(X::4),(Y::3))
 		if (act.is_alive()) {
 			d = act.loc;
@@ -1989,15 +1998,15 @@ public class Battleship extends RewriteMachine {
 			StoreIter<CheckFleet> candidates_1 = checkfleet_store_0.lookup_candidates(index0CheckFleet(d));
 			CheckFleet cand_1 = candidates_1.get_next_alive();
 			while(cand_1 != null) {
-				int d1;
-				d1 = cand_1.loc;
+				int d__1;
+				d__1 = cand_1.loc;
 				if (true) {
 					// Join Task: LookupAtom #H2 7:0:hash<[+]all(-)|.>  (D::0) [(D::0)]all((Ps::1))
 					StoreIter<All> candidates_2 = all_store_0.lookup_candidates(index0All(d));
 					All cand_2 = candidates_2.get_next_alive();
 					while(cand_2 != null) {
-						int d2;
-						d2 = cand_2.loc;
+						int d__2;
+						d__2 = cand_2.loc;
 						ps = cand_2.arg1;
 						if (true) {
 							// Join Task: LookupAll #H3 3:2:hash<[+]hull(-,-,-)|.>  (D::0) [(D::0)]hull((S::5),(X::4),(Y::3))
@@ -2033,7 +2042,7 @@ public class Battleship extends RewriteMachine {
 									send( new NotifyDead(p,d) ); 
 									send( new Dead(p,d) ); 
 								}
-								deadFleet_rule_count++;
+								deadFleet1_rule_count++;
 								return false;
 							}
 						}
@@ -2048,7 +2057,7 @@ public class Battleship extends RewriteMachine {
 	
 	/*
 	**** 0 Join Ordering of Rule miss ****
-	Rule Head Variables: (A::3), (X::1), (Y::2), (D::0)
+	Rule Head Variables: (D::0), (X::1), (Y::2), (A::3)
 	Rule Head Compre Binders: 
 	Active #H0 [(D::0)]blastAt((A::3),(X::1),(Y::2))
 	LookupAtom #H1 2:0:hash<[+]empty(+,+)|.>  (D::0),(X::1),(Y::2) [(D::0)]empty((X::1),(Y::2))
@@ -2058,10 +2067,10 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_blastat_join_ordering_1(BlastAt act) {
 		
-		int a;
+		int d;
 		int x;
 		int y;
-		int d;
+		int a;
 		// Join Task: Active #H0 [(D::0)]blastAt((A::3),(X::1),(Y::2))
 		d = act.loc;
 		a = act.arg1;
@@ -2071,13 +2080,13 @@ public class Battleship extends RewriteMachine {
 		StoreIter<Empty> candidates_1 = empty_store_0.lookup_candidates(index0Empty(d,x,y));
 		Empty cand_1 = candidates_1.get_next();
 		while(cand_1 != null) {
-			int d1;
-			int x1;
-			int y1;
-			d1 = cand_1.loc;
-			x1 = cand_1.arg1;
-			y1 = cand_1.arg2;
-			if (Equality.is_eq(d,d1) && Equality.is_eq(x,x1) && Equality.is_eq(y,y1)) {
+			int d__1;
+			int x__1;
+			int y__1;
+			d__1 = cand_1.loc;
+			x__1 = cand_1.arg1;
+			y__1 = cand_1.arg2;
+			if (Equality.is_eq(d,d__1) && Equality.is_eq(x,x__1) && Equality.is_eq(y,y__1)) {
 				// Join Task: DeleteHead #H0
 				// H0 is active and monotone, no delete required
 				// Join Task: IntroAtom Local NoPrior Mono [(D::0)]missed((A::3),(D::0),(X::1),(Y::2))
@@ -2095,7 +2104,7 @@ public class Battleship extends RewriteMachine {
 	
 	/*
 	**** 0 Join Ordering of Rule goodHit ****
-	Rule Head Variables: (A::1), (X::2), (S::4), (Y::3), (D::0)
+	Rule Head Variables: (D::0), (A::1), (X::2), (Y::3), (S::4)
 	Rule Head Compre Binders: 
 	Active #H0 [(D::0)]blastAt((A::1),(X::2),(Y::3))
 	LookupAtom #H1 3:0:hash<[+]hull(-,+,+)|.>  (D::0),(X::2),(Y::3) [(D::0)]hull((S::4),(X::2),(Y::3))
@@ -2108,11 +2117,11 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_blastat_join_ordering_2(BlastAt act) {
 		
+		int d;
 		int a;
 		int x;
-		String s;
 		int y;
-		int d;
+		String s;
 		// Join Task: Active #H0 [(D::0)]blastAt((A::1),(X::2),(Y::3))
 		d = act.loc;
 		a = act.arg1;
@@ -2122,14 +2131,14 @@ public class Battleship extends RewriteMachine {
 		StoreIter<Hull> candidates_1 = hull_store_0.lookup_candidates(index0Hull(d,x,y));
 		Hull cand_1 = candidates_1.get_next_alive();
 		while(cand_1 != null) {
-			int d1;
-			int x1;
-			int y1;
-			d1 = cand_1.loc;
+			int d__1;
+			int x__1;
+			int y__1;
+			d__1 = cand_1.loc;
 			s = cand_1.arg1;
-			x1 = cand_1.arg2;
-			y1 = cand_1.arg3;
-			if (Equality.is_eq(d,d1) && Equality.is_eq(x,x1) && Equality.is_eq(y,y1)) {
+			x__1 = cand_1.arg2;
+			y__1 = cand_1.arg3;
+			if (Equality.is_eq(d,d__1) && Equality.is_eq(x,x__1) && Equality.is_eq(y,y__1)) {
 				// Join Task: DeleteHead #H0
 				// H0 is active and monotone, no delete required
 				// Join Task: DeleteHead #H1
@@ -2153,7 +2162,7 @@ public class Battleship extends RewriteMachine {
 	
 	/*
 	**** 0 Join Ordering of Rule dmgHit ****
-	Rule Head Variables: (A::4), (X::2), (S::1), (Y::3), (D::0)
+	Rule Head Variables: (D::0), (S::1), (X::2), (Y::3), (A::4)
 	Rule Head Compre Binders: 
 	Active #H0 [(D::0)]blastAt((A::4),(X::2),(Y::3))
 	LookupAtom #H1 8:0:hash<[+]damaged(-,+,+)|.>  (D::0),(X::2),(Y::3) [(D::0)]damaged((S::1),(X::2),(Y::3))
@@ -2163,11 +2172,11 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_blastat_join_ordering_3(BlastAt act) {
 		
-		int a;
-		int x;
-		String s;
-		int y;
 		int d;
+		String s;
+		int x;
+		int y;
+		int a;
 		// Join Task: Active #H0 [(D::0)]blastAt((A::4),(X::2),(Y::3))
 		d = act.loc;
 		a = act.arg1;
@@ -2177,14 +2186,14 @@ public class Battleship extends RewriteMachine {
 		StoreIter<Damaged> candidates_1 = damaged_store_0.lookup_candidates(index0Damaged(d,x,y));
 		Damaged cand_1 = candidates_1.get_next();
 		while(cand_1 != null) {
-			int d1;
-			int x1;
-			int y1;
-			d1 = cand_1.loc;
+			int d__1;
+			int x__1;
+			int y__1;
+			d__1 = cand_1.loc;
 			s = cand_1.arg1;
-			x1 = cand_1.arg2;
-			y1 = cand_1.arg3;
-			if (Equality.is_eq(d,d1) && Equality.is_eq(x,x1) && Equality.is_eq(y,y1)) {
+			x__1 = cand_1.arg2;
+			y__1 = cand_1.arg3;
+			if (Equality.is_eq(d,d__1) && Equality.is_eq(x,x__1) && Equality.is_eq(y,y__1)) {
 				// Join Task: DeleteHead #H0
 				// H0 is active and monotone, no delete required
 				// Join Task: IntroAtom Local NoPrior Mono [(D::0)]hit((A::4),(D::0),(X::2),(Y::3))
@@ -2202,7 +2211,7 @@ public class Battleship extends RewriteMachine {
 	
 	/*
 	**** 2 Join Ordering of Rule shoot ****
-	Rule Head Variables: (A::0), (X::3), (B::1), (Y::4), (D::2)
+	Rule Head Variables: (A::0), (B::1), (D::2), (X::3), (Y::4)
 	Rule Head Compre Binders: 
 	Active #H0 [(A::0)]next((B::1))
 	LookupAtom #H1 6:0:hash<[+]turn()|.>  (A::0) [(A::0)]turn()
@@ -2216,10 +2225,10 @@ public class Battleship extends RewriteMachine {
 	protected boolean execute_next_join_ordering_1(Next act) {
 		
 		int a;
-		int x;
 		int b;
-		int y;
 		int d;
+		int x;
+		int y;
 		// Join Task: Active #H0 [(A::0)]next((B::1))
 		a = act.loc;
 		b = act.arg1;
@@ -2227,15 +2236,15 @@ public class Battleship extends RewriteMachine {
 		StoreIter<Turn> candidates_1 = turn_store_0.lookup_candidates(index0Turn(a));
 		Turn cand_1 = candidates_1.get_next_alive();
 		while(cand_1 != null) {
-			int a1;
-			a1 = cand_1.loc;
+			int a__1;
+			a__1 = cand_1.loc;
 			if (true) {
 				// Join Task: LookupAtom #H2 1:0:hash<[+]fireAt(-,-,-)|.>  (A::0) [(A::0)]fireAt((D::2),(X::3),(Y::4))
 				StoreIter<FireAt> candidates_2 = fireat_store_0.lookup_candidates(index0FireAt(a));
 				FireAt cand_2 = candidates_2.get_next_alive();
 				while(cand_2 != null) {
-					int a2;
-					a2 = cand_2.loc;
+					int a__2;
+					a__2 = cand_2.loc;
 					d = cand_2.arg1;
 					x = cand_2.arg2;
 					y = cand_2.arg3;
@@ -2262,7 +2271,7 @@ public class Battleship extends RewriteMachine {
 	
 	/*
 	**** 1 Join Ordering of Rule shoot ****
-	Rule Head Variables: (A::0), (X::3), (B::1), (Y::4), (D::2)
+	Rule Head Variables: (A::0), (B::1), (D::2), (X::3), (Y::4)
 	Rule Head Compre Binders: 
 	Active #H0 [(A::0)]turn()
 	LookupAtom #H1 5:0:hash<[+]next(-)|.>  (A::0) [(A::0)]next((B::1))
@@ -2276,26 +2285,26 @@ public class Battleship extends RewriteMachine {
 	protected boolean execute_turn_join_ordering_1(Turn act) {
 		
 		int a;
-		int x;
 		int b;
-		int y;
 		int d;
+		int x;
+		int y;
 		// Join Task: Active #H0 [(A::0)]turn()
 		a = act.loc;
 		// Join Task: LookupAtom #H1 5:0:hash<[+]next(-)|.>  (A::0) [(A::0)]next((B::1))
 		StoreIter<Next> candidates_1 = next_store_0.lookup_candidates(index0Next(a));
 		Next cand_1 = candidates_1.get_next();
 		while(cand_1 != null) {
-			int a1;
-			a1 = cand_1.loc;
+			int a__1;
+			a__1 = cand_1.loc;
 			b = cand_1.arg1;
 			if (true) {
 				// Join Task: LookupAtom #H2 1:0:hash<[+]fireAt(-,-,-)|.>  (A::0) [(A::0)]fireAt((D::2),(X::3),(Y::4))
 				StoreIter<FireAt> candidates_2 = fireat_store_0.lookup_candidates(index0FireAt(a));
 				FireAt cand_2 = candidates_2.get_next_alive();
 				while(cand_2 != null) {
-					int a2;
-					a2 = cand_2.loc;
+					int a__2;
+					a__2 = cand_2.loc;
 					d = cand_2.arg1;
 					x = cand_2.arg2;
 					y = cand_2.arg3;
@@ -2322,9 +2331,9 @@ public class Battleship extends RewriteMachine {
 	}
 	
 	/*
-	**** 1 Join Ordering of Rule sunk ****
-	Rule Head Variables: (A::6), (Ps::1), (D::0), (Hs::7), (S::5), (Ds::2)
-	Rule Head Compre Binders: (Y::3), (X::4), (W::8), (V::9)
+	**** 1 Join Ordering of Rule sunk1 ****
+	Rule Head Variables: (D::0), (Ps::1), (Ds::2), (S::5), (A::6), (Hs::7)
+	Rule Head Compre Binders: (W::8), (V::9), (Y::3), (X::4)
 	Active #H0 [(D::0)]all((Ps::1))
 	LookupAtom #H1 9:0:hash<[+]checkShip(-,-)|.>  (D::0) [(D::0)]checkShip((A::6),(S::5))
 	LookupAll #H2 3:1:hash<[+]hull(+,-,-)|.>  (D::0),(S::5) [(D::0)]hull((S::5),(W::8),(V::9))
@@ -2339,17 +2348,17 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_all_join_ordering_1(All act) {
 		
-		int a;
-		SimpMultiset<Integer>  ps;
 		int d;
-		SimpMultiset<Tuple2<Integer,Integer> >  hs;
-		int p;
-		String s;
-		int w;
-		int v;
+		SimpMultiset<Integer>  ps;
+		SimpMultiset<Tuple2<Integer,Integer> >  ds;
 		int y;
 		int x;
-		SimpMultiset<Tuple2<Integer,Integer> >  ds;
+		String s;
+		int a;
+		SimpMultiset<Tuple2<Integer,Integer> >  hs;
+		int w;
+		int v;
+		int p;
 		// Join Task: Active #H0 [(D::0)]all((Ps::1))
 		d = act.loc;
 		ps = act.arg1;
@@ -2357,8 +2366,8 @@ public class Battleship extends RewriteMachine {
 		StoreIter<CheckShip> candidates_1 = checkship_store_0.lookup_candidates(index0CheckShip(d));
 		CheckShip cand_1 = candidates_1.get_next_alive();
 		while(cand_1 != null) {
-			int d1;
-			d1 = cand_1.loc;
+			int d__1;
+			d__1 = cand_1.loc;
 			a = cand_1.arg1;
 			s = cand_1.arg2;
 			if (true) {
@@ -2367,13 +2376,13 @@ public class Battleship extends RewriteMachine {
 				ListStoreIter<Hull> candidates_2_0 = new ListStoreIter<Hull>();
 				Hull cand_2 = candidates_2.get_next_alive();
 				while(cand_2 != null) {
-					int d2;
-					String s2;
-					d2 = cand_2.loc;
-					s2 = cand_2.arg1;
+					int d__2;
+					String s__2;
+					d__2 = cand_2.loc;
+					s__2 = cand_2.arg1;
 					w = cand_2.arg2;
 					v = cand_2.arg3;
-					if (Equality.is_eq(d,d2) && Equality.is_eq(s,s2)) {
+					if (Equality.is_eq(d,d__2) && Equality.is_eq(s,s__2)) {
 						candidates_2_0.add( cand_2 );
 					}
 					cand_2 = candidates_2.get_next_alive();
@@ -2398,13 +2407,13 @@ public class Battleship extends RewriteMachine {
 					ListStoreIter<Damaged> candidates_3_0 = new ListStoreIter<Damaged>();
 					Damaged cand_3 = candidates_3.get_next();
 					while(cand_3 != null) {
-						int d3;
-						String s3;
-						d3 = cand_3.loc;
-						s3 = cand_3.arg1;
+						int d__3;
+						String s__3;
+						d__3 = cand_3.loc;
+						s__3 = cand_3.arg1;
 						x = cand_3.arg2;
 						y = cand_3.arg3;
-						if (Equality.is_eq(d,d3) && Equality.is_eq(s,s3)) {
+						if (Equality.is_eq(d,d__3) && Equality.is_eq(s,s__3)) {
 							candidates_3_0.add( cand_3 );
 						}
 						cand_3 = candidates_3.get_next();
@@ -2438,7 +2447,7 @@ public class Battleship extends RewriteMachine {
 						p = comp_0.get(idx);
 						send( new Sunk(p,a,d,s,ds) ); 
 					}
-					sunk_rule_count++;
+					sunk1_rule_count++;
 				}
 			}
 			cand_1 = candidates_1.get_next_alive();
@@ -2447,8 +2456,8 @@ public class Battleship extends RewriteMachine {
 	}
 	
 	/*
-	**** 0 Join Ordering of Rule deadFleet ****
-	Rule Head Variables: (Ps::1), (D::0), (Hs::2)
+	**** 0 Join Ordering of Rule deadFleet1 ****
+	Rule Head Variables: (D::0), (Ps::1), (Hs::2)
 	Rule Head Compre Binders: (Y::3), (X::4), (S::5)
 	Active #H0 [(D::0)]all((Ps::1))
 	LookupAtom #H1 10:0:hash<[+]checkFleet()|.>  (D::0) [(D::0)]checkFleet()
@@ -2462,13 +2471,13 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_all_join_ordering_2(All act) {
 		
-		SimpMultiset<Integer>  ps;
 		int d;
+		SimpMultiset<Integer>  ps;
 		SimpMultiset<Tuple3<String,Integer,Integer> >  hs;
-		int p;
-		String s;
 		int y;
 		int x;
+		String s;
+		int p;
 		// Join Task: Active #H0 [(D::0)]all((Ps::1))
 		d = act.loc;
 		ps = act.arg1;
@@ -2476,8 +2485,8 @@ public class Battleship extends RewriteMachine {
 		StoreIter<CheckFleet> candidates_1 = checkfleet_store_0.lookup_candidates(index0CheckFleet(d));
 		CheckFleet cand_1 = candidates_1.get_next_alive();
 		while(cand_1 != null) {
-			int d1;
-			d1 = cand_1.loc;
+			int d__1;
+			d__1 = cand_1.loc;
 			if (true) {
 				// Join Task: LookupAll #H2 3:2:hash<[+]hull(-,-,-)|.>  (D::0) [(D::0)]hull((S::5),(X::4),(Y::3))
 				StoreIter<Hull> candidates_2 = hull_store_2.lookup_candidates(index2Hull(d));
@@ -2512,7 +2521,7 @@ public class Battleship extends RewriteMachine {
 						send( new NotifyDead(p,d) ); 
 						send( new Dead(p,d) ); 
 					}
-					deadFleet_rule_count++;
+					deadFleet1_rule_count++;
 					return false;
 				}
 			}
@@ -2523,7 +2532,7 @@ public class Battleship extends RewriteMachine {
 	
 	/*
 	**** 0 Join Ordering of Rule winner ****
-	Rule Head Variables: (Ps::1), (Os::2), (D::0)
+	Rule Head Variables: (D::0), (Ps::1), (Os::2)
 	Rule Head Compre Binders: (O::3)
 	Active #H0 [(D::0)]all((Ps::1))
 	LookupAll #H1 11:0:hash<[+]dead(-)|.>  (D::0) [(D::0)]dead((O::3))
@@ -2535,9 +2544,9 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_all_join_ordering_3(All act) {
 		
+		int d;
 		SimpMultiset<Integer>  ps;
 		SimpMultiset<Integer>  os;
-		int d;
 		int o;
 		int p;
 		// Join Task: Active #H0 [(D::0)]all((Ps::1))
@@ -2580,7 +2589,7 @@ public class Battleship extends RewriteMachine {
 	
 	/*
 	**** 1 Join Ordering of Rule dmgHit ****
-	Rule Head Variables: (A::4), (X::2), (S::1), (Y::3), (D::0)
+	Rule Head Variables: (D::0), (S::1), (X::2), (Y::3), (A::4)
 	Rule Head Compre Binders: 
 	Active #H0 [(D::0)]damaged((S::1),(X::2),(Y::3))
 	LookupAtom #H1 4:0:hash<[+]blastAt(-,+,+)|.>  (D::0),(X::2),(Y::3) [(D::0)]blastAt((A::4),(X::2),(Y::3))
@@ -2590,11 +2599,11 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_damaged_join_ordering_1(Damaged act) {
 		
-		int a;
-		int x;
-		String s;
-		int y;
 		int d;
+		String s;
+		int x;
+		int y;
+		int a;
 		// Join Task: Active #H0 [(D::0)]damaged((S::1),(X::2),(Y::3))
 		if (act.is_alive()) {
 			d = act.loc;
@@ -2605,14 +2614,14 @@ public class Battleship extends RewriteMachine {
 			StoreIter<BlastAt> candidates_1 = blastat_store_0.lookup_candidates(index0BlastAt(d,x,y));
 			BlastAt cand_1 = candidates_1.get_next_alive();
 			while(cand_1 != null) {
-				int d1;
-				int x1;
-				int y1;
-				d1 = cand_1.loc;
+				int d__1;
+				int x__1;
+				int y__1;
+				d__1 = cand_1.loc;
 				a = cand_1.arg1;
-				x1 = cand_1.arg2;
-				y1 = cand_1.arg3;
-				if (Equality.is_eq(d,d1) && Equality.is_eq(x,x1) && Equality.is_eq(y,y1)) {
+				x__1 = cand_1.arg2;
+				y__1 = cand_1.arg3;
+				if (Equality.is_eq(d,d__1) && Equality.is_eq(x,x__1) && Equality.is_eq(y,y__1)) {
 					// Join Task: DeleteHead #H1
 					blastat_store_0.remove( cand_1 );
 					// Join Task: IntroAtom Local NoPrior Mono [(D::0)]hit((A::4),(D::0),(X::2),(Y::3))
@@ -2629,9 +2638,9 @@ public class Battleship extends RewriteMachine {
 	}
 	
 	/*
-	**** 3 Join Ordering of Rule sunk ****
-	Rule Head Variables: (A::6), (Ps::1), (D::0), (Hs::7), (S::5), (Ds::2)
-	Rule Head Compre Binders: (Y::3), (X::4), (W::8), (V::9)
+	**** 3 Join Ordering of Rule sunk1 ****
+	Rule Head Variables: (D::0), (Ps::1), (Ds::2), (S::5), (A::6), (Hs::7)
+	Rule Head Compre Binders: (W::8), (V::9), (Y::3), (X::4)
 	Active #H0 [(D::0)]damaged((S::5),(X::4),(Y::3))
 	LookupAtom #H1 9:1:hash<[+]checkShip(-,+)|.>  (D::0),(S::5) [(D::0)]checkShip((A::6),(S::5))
 	LookupAtom #H2 7:0:hash<[+]all(-)|.>  (D::0) [(D::0)]all((Ps::1))
@@ -2647,17 +2656,17 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_damaged_join_ordering_2(Damaged act) {
 		
-		int a;
-		SimpMultiset<Integer>  ps;
 		int d;
-		SimpMultiset<Tuple2<Integer,Integer> >  hs;
-		int p;
-		String s;
-		int w;
-		int v;
+		SimpMultiset<Integer>  ps;
+		SimpMultiset<Tuple2<Integer,Integer> >  ds;
 		int y;
 		int x;
-		SimpMultiset<Tuple2<Integer,Integer> >  ds;
+		String s;
+		int a;
+		SimpMultiset<Tuple2<Integer,Integer> >  hs;
+		int w;
+		int v;
+		int p;
 		// Join Task: Active #H0 [(D::0)]damaged((S::5),(X::4),(Y::3))
 		if (act.is_alive()) {
 			d = act.loc;
@@ -2668,18 +2677,18 @@ public class Battleship extends RewriteMachine {
 			StoreIter<CheckShip> candidates_1 = checkship_store_1.lookup_candidates(index1CheckShip(d,s));
 			CheckShip cand_1 = candidates_1.get_next_alive();
 			while(cand_1 != null) {
-				int d1;
-				String s1;
-				d1 = cand_1.loc;
+				int d__1;
+				String s__1;
+				d__1 = cand_1.loc;
 				a = cand_1.arg1;
-				s1 = cand_1.arg2;
-				if (Equality.is_eq(d,d1) && Equality.is_eq(s,s1)) {
+				s__1 = cand_1.arg2;
+				if (Equality.is_eq(d,d__1) && Equality.is_eq(s,s__1)) {
 					// Join Task: LookupAtom #H2 7:0:hash<[+]all(-)|.>  (D::0) [(D::0)]all((Ps::1))
 					StoreIter<All> candidates_2 = all_store_0.lookup_candidates(index0All(d));
 					All cand_2 = candidates_2.get_next_alive();
 					while(cand_2 != null) {
-						int d2;
-						d2 = cand_2.loc;
+						int d__2;
+						d__2 = cand_2.loc;
 						ps = cand_2.arg1;
 						if (true) {
 							// Join Task: LookupAll #H3 8:1:hash<[+]damaged(+,-,-)|.>  (D::0),(S::5) [(D::0)]damaged((S::5),(X::4),(Y::3))
@@ -2687,13 +2696,13 @@ public class Battleship extends RewriteMachine {
 							ListStoreIter<Damaged> candidates_3_0 = new ListStoreIter<Damaged>();
 							Damaged cand_3 = candidates_3.get_next();
 							while(cand_3 != null) {
-								int d3;
-								String s3;
-								d3 = cand_3.loc;
-								s3 = cand_3.arg1;
+								int d__3;
+								String s__3;
+								d__3 = cand_3.loc;
+								s__3 = cand_3.arg1;
 								x = cand_3.arg2;
 								y = cand_3.arg3;
-								if (Equality.is_eq(d,d3) && Equality.is_eq(s,s3)) {
+								if (Equality.is_eq(d,d__3) && Equality.is_eq(s,s__3)) {
 									candidates_3_0.add( cand_3 );
 								}
 								cand_3 = candidates_3.get_next();
@@ -2716,13 +2725,13 @@ public class Battleship extends RewriteMachine {
 							ListStoreIter<Hull> candidates_4_0 = new ListStoreIter<Hull>();
 							Hull cand_4 = candidates_4.get_next_alive();
 							while(cand_4 != null) {
-								int d4;
-								String s4;
-								d4 = cand_4.loc;
-								s4 = cand_4.arg1;
+								int d__4;
+								String s__4;
+								d__4 = cand_4.loc;
+								s__4 = cand_4.arg1;
 								w = cand_4.arg2;
 								v = cand_4.arg3;
-								if (Equality.is_eq(d,d4) && Equality.is_eq(s,s4)) {
+								if (Equality.is_eq(d,d__4) && Equality.is_eq(s,s__4)) {
 									candidates_4_0.add( cand_4 );
 								}
 								cand_4 = candidates_4.get_next_alive();
@@ -2758,7 +2767,7 @@ public class Battleship extends RewriteMachine {
 									p = comp_0.get(idx);
 									send( new Sunk(p,a,d,s,ds) ); 
 								}
-								sunk_rule_count++;
+								sunk1_rule_count++;
 							}
 						}
 						cand_2 = candidates_2.get_next_alive();
@@ -2772,9 +2781,9 @@ public class Battleship extends RewriteMachine {
 	}
 	
 	/*
-	**** 0 Join Ordering of Rule sunk ****
-	Rule Head Variables: (A::6), (Ps::1), (D::0), (Hs::7), (S::5), (Ds::2)
-	Rule Head Compre Binders: (Y::3), (X::4), (W::8), (V::9)
+	**** 0 Join Ordering of Rule sunk1 ****
+	Rule Head Variables: (D::0), (Ps::1), (Ds::2), (S::5), (A::6), (Hs::7)
+	Rule Head Compre Binders: (W::8), (V::9), (Y::3), (X::4)
 	Active #H0 [(D::0)]checkShip((A::6),(S::5))
 	LookupAtom #H1 7:0:hash<[+]all(-)|.>  (D::0) [(D::0)]all((Ps::1))
 	LookupAll #H2 3:1:hash<[+]hull(+,-,-)|.>  (D::0),(S::5) [(D::0)]hull((S::5),(W::8),(V::9))
@@ -2789,17 +2798,17 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_checkship_join_ordering_1(CheckShip act) {
 		
-		int a;
-		SimpMultiset<Integer>  ps;
 		int d;
-		SimpMultiset<Tuple2<Integer,Integer> >  hs;
-		int p;
-		String s;
-		int w;
-		int v;
+		SimpMultiset<Integer>  ps;
+		SimpMultiset<Tuple2<Integer,Integer> >  ds;
 		int y;
 		int x;
-		SimpMultiset<Tuple2<Integer,Integer> >  ds;
+		String s;
+		int a;
+		SimpMultiset<Tuple2<Integer,Integer> >  hs;
+		int w;
+		int v;
+		int p;
 		// Join Task: Active #H0 [(D::0)]checkShip((A::6),(S::5))
 		d = act.loc;
 		a = act.arg1;
@@ -2808,8 +2817,8 @@ public class Battleship extends RewriteMachine {
 		StoreIter<All> candidates_1 = all_store_0.lookup_candidates(index0All(d));
 		All cand_1 = candidates_1.get_next_alive();
 		while(cand_1 != null) {
-			int d1;
-			d1 = cand_1.loc;
+			int d__1;
+			d__1 = cand_1.loc;
 			ps = cand_1.arg1;
 			if (true) {
 				// Join Task: LookupAll #H2 3:1:hash<[+]hull(+,-,-)|.>  (D::0),(S::5) [(D::0)]hull((S::5),(W::8),(V::9))
@@ -2817,13 +2826,13 @@ public class Battleship extends RewriteMachine {
 				ListStoreIter<Hull> candidates_2_0 = new ListStoreIter<Hull>();
 				Hull cand_2 = candidates_2.get_next_alive();
 				while(cand_2 != null) {
-					int d2;
-					String s2;
-					d2 = cand_2.loc;
-					s2 = cand_2.arg1;
+					int d__2;
+					String s__2;
+					d__2 = cand_2.loc;
+					s__2 = cand_2.arg1;
 					w = cand_2.arg2;
 					v = cand_2.arg3;
-					if (Equality.is_eq(d,d2) && Equality.is_eq(s,s2)) {
+					if (Equality.is_eq(d,d__2) && Equality.is_eq(s,s__2)) {
 						candidates_2_0.add( cand_2 );
 					}
 					cand_2 = candidates_2.get_next_alive();
@@ -2848,13 +2857,13 @@ public class Battleship extends RewriteMachine {
 					ListStoreIter<Damaged> candidates_3_0 = new ListStoreIter<Damaged>();
 					Damaged cand_3 = candidates_3.get_next();
 					while(cand_3 != null) {
-						int d3;
-						String s3;
-						d3 = cand_3.loc;
-						s3 = cand_3.arg1;
+						int d__3;
+						String s__3;
+						d__3 = cand_3.loc;
+						s__3 = cand_3.arg1;
 						x = cand_3.arg2;
 						y = cand_3.arg3;
-						if (Equality.is_eq(d,d3) && Equality.is_eq(s,s3)) {
+						if (Equality.is_eq(d,d__3) && Equality.is_eq(s,s__3)) {
 							candidates_3_0.add( cand_3 );
 						}
 						cand_3 = candidates_3.get_next();
@@ -2888,7 +2897,7 @@ public class Battleship extends RewriteMachine {
 						p = comp_0.get(idx);
 						send( new Sunk(p,a,d,s,ds) ); 
 					}
-					sunk_rule_count++;
+					sunk1_rule_count++;
 					return false;
 				}
 			}
@@ -2898,8 +2907,31 @@ public class Battleship extends RewriteMachine {
 	}
 	
 	/*
-	**** 1 Join Ordering of Rule deadFleet ****
-	Rule Head Variables: (Ps::1), (D::0), (Hs::2)
+	**** 0 Join Ordering of Rule sunk2 ****
+	Rule Head Variables: (D::0), (A::1), (S::2)
+	Rule Head Compre Binders: 
+	Active #H0 [(D::0)]checkShip((A::1),(S::2))
+	DeleteHead #H0
+	*/
+	protected boolean execute_checkship_join_ordering_2(CheckShip act) {
+		
+		int d;
+		int a;
+		String s;
+		// Join Task: Active #H0 [(D::0)]checkShip((A::1),(S::2))
+		d = act.loc;
+		a = act.arg1;
+		s = act.arg2;
+		// Join Task: DeleteHead #H0
+		// H0 is active and monotone, no delete required
+		sunk2_rule_count++;
+		return false;
+		
+	}
+	
+	/*
+	**** 1 Join Ordering of Rule deadFleet1 ****
+	Rule Head Variables: (D::0), (Ps::1), (Hs::2)
 	Rule Head Compre Binders: (Y::3), (X::4), (S::5)
 	Active #H0 [(D::0)]checkFleet()
 	LookupAtom #H1 7:0:hash<[+]all(-)|.>  (D::0) [(D::0)]all((Ps::1))
@@ -2913,21 +2945,21 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_checkfleet_join_ordering_1(CheckFleet act) {
 		
-		SimpMultiset<Integer>  ps;
 		int d;
+		SimpMultiset<Integer>  ps;
 		SimpMultiset<Tuple3<String,Integer,Integer> >  hs;
-		int p;
-		String s;
 		int y;
 		int x;
+		String s;
+		int p;
 		// Join Task: Active #H0 [(D::0)]checkFleet()
 		d = act.loc;
 		// Join Task: LookupAtom #H1 7:0:hash<[+]all(-)|.>  (D::0) [(D::0)]all((Ps::1))
 		StoreIter<All> candidates_1 = all_store_0.lookup_candidates(index0All(d));
 		All cand_1 = candidates_1.get_next_alive();
 		while(cand_1 != null) {
-			int d1;
-			d1 = cand_1.loc;
+			int d__1;
+			d__1 = cand_1.loc;
 			ps = cand_1.arg1;
 			if (true) {
 				// Join Task: LookupAll #H2 3:2:hash<[+]hull(-,-,-)|.>  (D::0) [(D::0)]hull((S::5),(X::4),(Y::3))
@@ -2963,7 +2995,7 @@ public class Battleship extends RewriteMachine {
 						send( new NotifyDead(p,d) ); 
 						send( new Dead(p,d) ); 
 					}
-					deadFleet_rule_count++;
+					deadFleet1_rule_count++;
 					return false;
 				}
 			}
@@ -2973,8 +3005,27 @@ public class Battleship extends RewriteMachine {
 	}
 	
 	/*
+	**** 0 Join Ordering of Rule deadFleet2 ****
+	Rule Head Variables: (D::0)
+	Rule Head Compre Binders: 
+	Active #H0 [(D::0)]checkFleet()
+	DeleteHead #H0
+	*/
+	protected boolean execute_checkfleet_join_ordering_2(CheckFleet act) {
+		
+		int d;
+		// Join Task: Active #H0 [(D::0)]checkFleet()
+		d = act.loc;
+		// Join Task: DeleteHead #H0
+		// H0 is active and monotone, no delete required
+		deadFleet2_rule_count++;
+		return false;
+		
+	}
+	
+	/*
 	**** 1 Join Ordering of Rule winner ****
-	Rule Head Variables: (Ps::1), (Os::2), (D::0)
+	Rule Head Variables: (D::0), (Ps::1), (Os::2)
 	Rule Head Compre Binders: (O::3)
 	Active #H0 [(D::0)]dead((O::3))
 	LookupAtom #H1 7:0:hash<[+]all(-)|.>  (D::0) [(D::0)]all((Ps::1))
@@ -2987,9 +3038,9 @@ public class Battleship extends RewriteMachine {
 	*/
 	protected boolean execute_dead_join_ordering_1(Dead act) {
 		
+		int d;
 		SimpMultiset<Integer>  ps;
 		SimpMultiset<Integer>  os;
-		int d;
 		int o;
 		int p;
 		// Join Task: Active #H0 [(D::0)]dead((O::3))
@@ -3000,8 +3051,8 @@ public class Battleship extends RewriteMachine {
 			StoreIter<All> candidates_1 = all_store_0.lookup_candidates(index0All(d));
 			All cand_1 = candidates_1.get_next_alive();
 			while(cand_1 != null) {
-				int d1;
-				d1 = cand_1.loc;
+				int d__1;
+				d__1 = cand_1.loc;
 				ps = cand_1.arg1;
 				if (true) {
 					// Join Task: LookupAll #H2 11:0:hash<[+]dead(-)|.>  (D::0) [(D::0)]dead((O::3))
@@ -3107,13 +3158,17 @@ public class Battleship extends RewriteMachine {
 	
 	protected void execute(CheckShip checkship) {
 		if( execute_checkship_join_ordering_1(checkship) ) {
-			store( checkship );
+			if( execute_checkship_join_ordering_2(checkship) ) {
+				store( checkship );
+			}
 		}
 	}
 	
 	protected void execute(CheckFleet checkfleet) {
 		if( execute_checkfleet_join_ordering_1(checkfleet) ) {
-			store( checkfleet );
+			if( execute_checkfleet_join_ordering_2(checkfleet) ) {
+				store( checkfleet );
+			}
 		}
 	}
 	
