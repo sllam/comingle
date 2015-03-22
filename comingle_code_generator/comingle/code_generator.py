@@ -181,6 +181,7 @@ class JavaCodeGenerator:
 		self.init_fact_dict()
 		self.init_store_dict()
 		self.init_extern_dict()
+		self.init_role_dict()
 		self.join_ordering_dict = {}
 		self.var_idx = 0
 		self.tup_idx = 0
@@ -272,6 +273,21 @@ class JavaCodeGenerator:
 			return self.fact_dict.values()
 		else:
 			return filter(lambda fact_info: fact_info['role'] == role,self.fact_dict.values())
+
+	def init_role_dict(self):
+		self.role_dict = {}
+		java_type_coerce = JavaTypeCoercion()
+		for role_name,role_info in self.prog.role_dict.items():
+			role_sig_dec = role_info['sig']
+			role_def_dec = role_info['def']
+			info = { 'role_name'        : role_name
+                               , 'init_name'        : "initRole%s" % (role_name[0].upper() + role_name[1:])
+                               , 'types'            : role_sig_dec.arg_types()
+                               , 'boxed_type_codes' : map(lambda arg_type : java_type_coerce.coerce_type_codes(arg_type, boxed=True), role_sig_dec.arg_types())
+                               , 'type_codes'       : map(lambda arg_type : java_type_coerce.coerce_type_codes(arg_type), role_sig_dec.arg_types()) 
+                               , 'sig' : role_sig_dec
+                               , 'def' : role_def_dec }
+			self.role_dict[role_name] = info
 
 	def init_store_dict(self):
 		self.store_dict = {}
@@ -422,6 +438,8 @@ class JavaCodeGenerator:
 		ensem_name = mk_ensem_name( exec_dec.name )
 		inspect = Inspector()
 		java_type_coerce = JavaTypeCoercion()
+
+		'''
 		exist_decs = inspect.filter_decs(exec_dec.decs, exist=True)
 		rest_decs  = inspect.filter_decs(exec_dec.decs, loc_facts=True, assign=True)
 
@@ -436,17 +454,18 @@ class JavaCodeGenerator:
 		rest_codes = []
 		for rest_dec in rest_decs:
 			rest_codes.append( self.generate_exec_stmt(rest_dec, inspect, java_type_coerce, idx_dict) )				
+		'''
+		idx_dict = { 'loc':0, 'compre':0 }
+		exec_codes = map(lambda e: self.generate_exec_stmt(e, inspect, java_type_coerce, idx_dict), exec_dec.decs)
 
-		exec_codes = template('''
+		exec_template = template('''
 			@Override
 			public void init() {
-				{| '\\n'.join( exist_codes ) |}
-				{| '\\n'.join( rest_codes ) |}
+				{| '\\n'.join( exec_codes ) |}
 			}
 		''')
 
-		return compact( compile_template( exec_codes, idx=idx, ensem_name=ensem_name, exist_codes=exist_codes
-                                                , rest_codes=rest_codes ) )
+		return compact( compile_template( exec_template, exec_codes=exec_codes ) )
 
 
 	@visit.on( 'dec' )
@@ -472,6 +491,35 @@ class JavaCodeGenerator:
 		''')
 		return compile_template(all_exist_codes, exist_codes=exist_codes)
 		
+	@visit.when( ast.InitDec )
+	def generate_exec_stmt(self, dec, inspect, java_type_coerce, idx_dict):
+		loc_dec_codes = []
+		init_codes = []
+		for loc in dec.locs:
+			loc_val = "%s" % idx_dict['loc']
+			idx_dict['loc'] += 1
+			loc_name = mk_cpp_var_name( loc.name )
+			loc_dec_codes.append( "int %s = %s;" % (loc_name, loc_val) )
+
+			role_info = self.role_dict[dec.fact.name]
+			init_name = role_info['init_name']
+			context_codes = []
+			arg_codes     = []
+			for cxt_codes,a_codes in map(lambda t: self.generate_term(t), dec.fact.terms):
+				context_codes += cxt_codes
+				arg_codes.append( a_codes )
+			init_codes.append(compile_template(template('''
+			{| '\\n'.join( context_codes ) |}
+			{| init_name |}({|loc_name|}{| join_ext(',',arg_codes,prefix=',') |});
+			'''), init_name=init_name, loc_name=loc_name, context_codes=context_codes, arg_codes=arg_codes))
+
+		init_template = template('''
+			{| '\\n'.join( loc_dec_codes ) |}
+			{| '\\n'.join( init_codes ) |}
+		''')
+
+		return compile_template(init_template, loc_dec_codes=loc_dec_codes, init_codes=init_codes)
+
 	@visit.when( ast.AssignDec )
 	def generate_exec_stmt(self, dec, inspect, java_type_coerce, idx_dict):
 		left_pat_context,left_pat_codes,left_post_codes = self.generate_left_pattern( dec.term_pat )
@@ -647,6 +695,9 @@ class JavaCodeGenerator:
 			trigger_member_codes.append( compile_template(trigger_member_code, fact_name=fact_info['fact_name']
                                                                      ,arg_decs=arg_decs, arg_calls=arg_calls ))
 
+		role_member_codes = []
+		for role_name,role_info in self.role_dict.items():
+			role_member_codes.append( self.generate_role_member(role_name, role_info) )
 
 		exported_store_codes = map(lambda (fact_idx,exported_store): self.generate_exported_store_member(fact_idx,exported_store) 
                                           ,self.exported_stores)
@@ -695,6 +746,8 @@ class JavaCodeGenerator:
 
 				{| '\\n'.join( actuator_member_codes ) |}
 
+				{| '\\n'.join( role_member_codes ) |}
+
 				{| '\\n'.join( exported_store_codes ) |}
 
 				{| exported_linear_stores_code |}
@@ -714,7 +767,7 @@ class JavaCodeGenerator:
                                        , boiler_plate_codes=BOILER_PLATE_CODES, fact_member_codes=fact_member_codes
                                        , join_exec_member_codes=join_exec_member_codes, fact_exec_member_codes=fact_exec_member_codes
                                        , exec_codes=exec_codes, actuator_name_codes=actuator_name_codes, exported_store_codes=exported_store_codes
-                                       , trigger_member_codes=trigger_member_codes, actuator_member_codes=actuator_member_codes
+                                       , trigger_member_codes=trigger_member_codes, actuator_member_codes=actuator_member_codes, role_member_codes=role_member_codes
                                        , exported_linear_stores_code=exported_linear_stores_code, generated_message=GENERATED_MESSAGE,source_codes=source_codes)
 
 	def generate_fact_decs(self, ensem_name, fact_idx):
@@ -991,10 +1044,37 @@ class JavaCodeGenerator:
                                        ,intro_member_codes=intro_member_codes, send_member_codes=send_member_codes
                                        ,ef_name=self.ensem_fact_name, demultiplex_member_codes=demultiplex_member_codes)
 
-	'''
-	store_info = { 'name':store_name, 'type':store_type, 'iter':iter_type, 'idx_func':idx_func_name, 'sort':fact_store.type
-                     , 'idx':idx_codes, 'collision_free':len(idx_codes)<=1, 'has_index':has_index, 'store_idx':store_idx }
-	'''
+	def generate_role_member(self, role_name, role_info):
+		role_sig_dec = role_info['sig']
+		role_def_dec = role_info['def']
+
+		loc_var  = mk_cpp_var_name( role_def_dec.loc.name )
+		arg_vars = map(lambda t: mk_cpp_var_name(t.name), role_def_dec.fact.terms )
+		
+		init_name = role_info['init_name']
+		arg_type_decs = []
+		for type_code,var_code in zip(role_info['type_codes'], arg_vars):
+			arg_type_decs.append( "%s %s" % (type_code,var_code) )
+
+		idx_dict = { 'loc':0, 'compre':0 }
+		inspect = Inspector()
+		java_type_coerce = JavaTypeCoercion()		
+		body_fact_codes = self.generate_exec_stmt(ast.LocFactDec(role_def_dec.facts), inspect, java_type_coerce, idx_dict)
+		
+		role_member_template = template('''
+		public void {|init_name|}(int {|loc_var|}{| join_ext(', ', arg_type_decs, prefix=', ') |}) {
+			{| body_fact_codes |}
+		}
+
+		public void {|init_name|}({| ', '.join( arg_type_decs ) |}) {
+			{|init_name|}(location{|join_ext(',', arg_vars, prefix=',')|});
+		}
+		''')
+
+		return compile_template(role_member_template, init_name=init_name, arg_type_decs=arg_type_decs
+                                       ,loc_var=loc_var, arg_vars=arg_vars, body_fact_codes=body_fact_codes)
+
+
 	def generate_exported_store_member(self, fact_idx, store_info):
 		fact_info = self.fact_dict[fact_idx]
 		fact_name = fact_info['var_name']
