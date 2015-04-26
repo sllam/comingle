@@ -10,6 +10,9 @@ By Edmund S. L. Lam (sllam@qatar.cmu.edu) and
 Programming via Join Patterns with Guards, Propagation and More) from the Qatar National Research Fund 
 (a member of the Qatar Foundation).
 
+** To appear in proceeding of the 10th International Federated Conference on Distributed Computing Techniques, Coordination'2015
+(http://discotec2015.inria.fr/francais-coordination-2015-accepted-papers/).
+
 What is CoMingle?
 =================
 
