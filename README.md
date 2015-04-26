@@ -3,8 +3,8 @@ CoMingle
 
 CoMingle: Distributed Logic Programming for Decentralized Mobile Ensembles
 
-By Edmund S. L. Lam (sllam@qatar.cmu.edu) and
-   Iliano Cervesato (iliano@cmu.edu)
+By Edmund S. L. Lam (sllam@qatar.cmu.edu) and Iliano Cervesato (iliano@cmu.edu), with
+Ali Elgazar (aee@cmu.edu) and Zeeshan Hanif (zeeshan@cmu.edu)
 
 * This implementation was made possible by an JSREP grant (JSREP 4-003-2-001, Effective Distributed 
 Programming via Join Patterns with Guards, Propagation and More) from the Qatar National Research Fund 
