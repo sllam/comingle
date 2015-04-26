@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">DragRacing</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_start">Start Race</string>
+    <string name="action_restart">Restart</string>
+    <string name="action_go">Go</string>
+
+</resources>

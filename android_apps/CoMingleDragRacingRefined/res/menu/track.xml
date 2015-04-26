@@ -1,0 +1,14 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="comingle.dragracing.TrackActivity" >
+
+    <item
+        android:id="@+id/action_settings"
+        android:orderInCategory="100"
+        android:title="@string/action_settings"/>
+    <item android:id="@+id/action_start" android:visible="false" android:orderInCategory="100" android:title="@string/action_start" android:showAsAction="always"></item>
+    <item android:id="@+id/action_restart" android:title="@string/action_restart" android:orderInCategory="100" android:showAsAction="ifRoom|withText" android:visible="false"></item>
+    <item android:id="@+id/action_go" android:title="@string/action_go" android:orderInCategory="100" android:visible="false" android:showAsAction="always"></item>
+
+</menu>
