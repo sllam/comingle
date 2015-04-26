@@ -10,8 +10,13 @@ By Edmund S. L. Lam (sllam@qatar.cmu.edu) and
 Programming via Join Patterns with Guards, Propagation and More) from the Qatar National Research Fund 
 (a member of the Qatar Foundation).
 
-** To appear in proceeding of the 10th International Federated Conference on Distributed Computing Techniques, Coordination'2015
+News
+====
+
+* To appear in proceeding of the 10th International Federated Conference on Distributed Computing Techniques, Coordination'2015
 (http://discotec2015.inria.fr/francais-coordination-2015-accepted-papers/).
+
+* New CoMingle runtime now works with Wifi-Direct as well as Local-Area-Networks! 
 
 What is CoMingle?
 =================
@@ -37,7 +42,7 @@ This repository contains a working copy of the Comingle compiler and runtime sys
 to get you started Comingling. Here's a summary of what it contains:
 
    - comingle_code_generator: the source codes of the compiler
-   - comingle_runtime: .jar libraries of the Comingle runtime
+   - comingle_runtime: .jar libraries and source codes of the Comingle runtime
    - examples: basic examples of Comingle programs
    - android_apps: small repository of android programs (eclipse project + .apk), orchestrated by Comingle.
    - papers: a repository of CoMingle research papers and technical reports
