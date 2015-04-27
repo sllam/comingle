@@ -20,10 +20,10 @@ ensem battleship {
 	predicate damaged   :: (string,int,int) -> fact.
 	predicate checkShip :: (loc,string) -> fact.
 	predicate checkFleet :: fact.
-	predicate dead       :: loc -> fact.
+	predicate dead       :: (loc,loc) -> fact.
 
 	predicate randomFleet  :: (int,int,int) -> actuator.
-	predicate notifyTurn   :: actuator.
+	predicate notifyTurn   :: loc -> actuator.
 	predicate missed       :: (loc,loc,int,int) -> actuator.
 	predicate hit          :: (loc,loc,int,int) -> actuator.
 	predicate sunk         :: (loc,loc,string,{(int,int)}) -> actuator.
@@ -31,21 +31,21 @@ ensem battleship {
 	predicate notifyWinner :: loc -> actuator.
 
 	rule start :: [I]initGame(G,F,C,Ls) 
-                          --o [I]turn(), [I]notifyTurn(),
+                          --o [I]turn(),
 			      { [A]next(B) | (A,B) <- Cs }, [E]next(I), 
-                              { [L]all(Ps), [L]randomFleet(G,F,C) | L <- Ls }
+                              { [L]all(Ps), [L]notifyTurn(I), [L]randomFleet(G,F,C) | L <- Ls }
                               where (Cs,E) = makeChain(I,Ls),
                                         Ps = mset(Ls).
 
-	rule shoot :: [A]next(B) \ [A]fireAt(D,X,Y), [A]turn()
-                           --o [D]blastAt(A,X,Y), [B]turn(), [B]notifyTurn().
+	rule shoot :: [A]next(B), [A]all(Ps) \ [A]fireAt(D,X,Y), [A]turn()
+                           --o [D]blastAt(A,X,Y), [B]turn(), {[P]notifyTurn(B)|P<-Ps}.
 
 	rule miss :: [D]empty(X,Y) \ [D]blastAt(A,X,Y) --o [D]missed(A,D,X,Y), [A]missed(A,D,X,Y).
 
-	rule goodHit :: [D]blastAt(A,X,Y), [D]hull(S,X,Y) --o [D]damaged(S,X,Y), [D]checkShip(A,S),
-                                                              [D]hit(A,D,X,Y), [A]hit(A,D,X,Y).
+	rule goodHit :: [D]all(Ps) \ [D]blastAt(A,X,Y), [D]hull(S,X,Y) --o [D]damaged(S,X,Y), [D]checkShip(A,S),
+                                                                           {[P]hit(A,D,X,Y)|P<-Ps}.
 
-	rule dmgHit  :: [D]damaged(S,X,Y) \ [D]blastAt(A,X,Y) --o [D]hit(A,D,X,Y), [A]hit(A,D,X,Y).
+	rule dmgHit  :: [D]all(Ps), [D]damaged(S,X,Y) \ [D]blastAt(A,X,Y) --o {[P]hit(A,D,X,Y)|P<-Ps}.
 
 	rule sunk1 :: [D]all(Ps), { [D]damaged(S,X,Y)|(X,Y)<-Ds } \ [D]checkShip(A,S), 
                       { [D]hull(S,W,V)|(W,V)<-Hs } | (size(Hs))==0
@@ -53,12 +53,16 @@ ensem battleship {
 
 	rule sunk2 :: [D]checkShip(A,S) --o 1.
 
-	rule deadFleet1 :: [D]all(Ps), [D]checkFleet(), { [D]hull(S,X,Y)|(S,X,Y)<-Hs } | (size(Hs))==0
-                           --o { [P]notifyDead(D), [P]dead(D) | P <- Ps }.
+	rule deadFleet1 :: [D]next(N) \ [D]all(Ps), [D]checkFleet(), { [D]hull(S,X,Y)|(S,X,Y)<-Hs } | (size(Hs))==0
+                           --o { [P]notifyDead(D), [P]dead(D,N) | P <- Ps }.
 
 	rule deadFleet2 :: [D]checkFleet() --o 1.
 
-	rule winner :: [D]all(Ps), { [D]dead(O) | O->Os } | Ps==(union(Os,{D})) 
+	rule forward1 :: [A]dead(B,N) \ [A]next(B) --o [A]next(N).
+
+	rule forward2 :: [A]dead(Ax,_),[A]next(B) \ [A]turn() | A==Ax --o [B]turn(). 
+
+	rule winner :: [D]all(Ps), { [D]dead(O,_) | O->Os } | Ps==(union(Os,{D})) 
                            --o { [P]notifyWinner(D) | P<-Ps }.
 
 }
