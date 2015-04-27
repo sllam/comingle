@@ -35,19 +35,35 @@ import android.app.Activity;
 import comingle.android.directory.ui.dialogs.DirectoryDialogBuilder;
 import comingle.comms.misc.Barrier;
 
-
+/**
+ * 
+ * This abstract class defines daemon thread routines that maintain a sequence of dialog
+ * boxes (created by DirectoryDialogBuilder) that prompts user for input parameters that
+ * customizes an instance of a BaseDirectory.
+ * 
+ * @author Edmund S.L. Lam
+ *
+ * @param <D> Type of administrative data handled by the directory.
+ */
 public class AlertDialogSequence<D extends Serializable> extends Thread {
 
 	protected final Activity activity;
 	protected final Barrier barrier;
 	protected final List<DirectoryDialogBuilder<D>> dialogs;
 	
+	/**
+	 * Basic Constructor
+	 * @param activity the activity that embeds the dialog boxes created by this sequence.
+	 */
 	public AlertDialogSequence(Activity activity) {
 		this.activity = activity;
 		this.barrier = new Barrier();
 		this.dialogs = new LinkedList<DirectoryDialogBuilder<D>>();
 	}
 	
+	/**
+	 * Main thread routine: Displays a list of dialog boxes prompting user input.
+	 */
 	@Override
 	public void run() {
 		for(final DirectoryDialogBuilder<D> dialog: dialogs) {
@@ -55,6 +71,11 @@ public class AlertDialogSequence<D extends Serializable> extends Thread {
 		}	
 	}
 	
+	/**
+	 * Given a DirectoryDialogBuilder, create and show its dialog in the
+	 * current activity, then wait until dialog box releases the synchronization barrier.
+	 * @param dialog
+	 */
 	protected void runDialog(final DirectoryDialogBuilder<D> dialog) {
 		activity.runOnUiThread(new Runnable() {
 			@Override
@@ -66,14 +87,26 @@ public class AlertDialogSequence<D extends Serializable> extends Thread {
 		barrier.reset();
 	}
 	
+	/**
+	 * Add a dialog builder to the default list of builders
+	 * @param dialog the dialog builder to add.
+	 */
 	public void addDialog(DirectoryDialogBuilder<D> dialog) {
 		dialogs.add(dialog);
 	}
 
+	/**
+	 * Add a list of dialog builders to the default list of builders
+	 * @param ds the list of dialog builders to add.
+	 */
 	public void addDialogs(List<DirectoryDialogBuilder<D>> ds) {
 		dialogs.addAll(ds);
 	}
 	
+	/**
+	 * Add an array of dialog builders to the default list of builders
+	 * @param ds the array of dialog builders to add.
+	 */
 	public void addDialogs(DirectoryDialogBuilder<D>[] ds) {
 		for(DirectoryDialogBuilder<D> d: ds) {
 			addDialog(d);

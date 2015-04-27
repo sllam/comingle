@@ -35,6 +35,14 @@ import comingle.comms.directory.BaseDirectory;
 
 import android.app.Activity;
 
+/**
+ * 
+ * An instance of the AlertDialogSequence, that prompts for user to setup a WifiDirectDirectory.
+ * 
+ * @author Edmund S.L. Lam
+ *
+ * @param <D> Type of administrative data handled by the directory.
+ */
 public class WifiDirectSetupDialogSequence<D extends Serializable> extends AlertDialogSequence<D> {
 
 	protected final BaseDirectory<D> directory;
@@ -44,6 +52,15 @@ public class WifiDirectSetupDialogSequence<D extends Serializable> extends Alert
 	protected int loc_res_id;
 	protected int ip_addr_res_id;
 	
+	/**
+	 * Basic Constructor
+	 * @param activity the activity that embeds the dialog boxes.
+	 * @param directory the directory to setup.
+	 * @param row_res_id Resource ID of row view for each node entry.
+	 * @param name_res_id Resource ID of name field for a node.
+	 * @param loc_res_id Resource ID of location field for a node.
+	 * @param ip_addr_res_id Resource ID of address field for a node.
+	 */
 	public WifiDirectSetupDialogSequence(Activity activity, BaseDirectory<D> directory, int row_res_id, 
             int name_res_id, int loc_res_id, int ip_addr_res_id) {
 		super(activity);
@@ -55,6 +72,13 @@ public class WifiDirectSetupDialogSequence<D extends Serializable> extends Alert
 		this.ip_addr_res_id = ip_addr_res_id;
 	}
 
+	/**
+	 * Run wifi-direct directory setup sequence:
+	 *   i. If wifi-adapters are not enabled, run wifi-adapter dialog prompt. Otherwise run the following
+	 *   ii. If no wifi-direct connection detected, run "no wifi-direct group" dialog prompt. Otherwise run the following
+	 *   iii. Run display name prompt dialog box.
+	 *   iv. Run peer list display dialog box.
+	 */
 	@Override
 	public void run() {
 		if(!directory.isWifiEnabled()) {

@@ -39,6 +39,14 @@ import comingle.comms.misc.RandGenerator;
 
 import android.app.Activity;
 
+/**
+ * 
+ * An instance of the AlertDialogSequence, that prompts for user to setup a LANDirectory.
+ * 
+ * @author Edmund S.L. Lam
+ *
+ * @param <D> Type of administrative data handled by the directory.
+ */
 public class LanSetupDialogSequence<D extends Serializable> extends AlertDialogSequence<D> {
 
 	protected final boolean promptReqCode;
@@ -49,6 +57,11 @@ public class LanSetupDialogSequence<D extends Serializable> extends AlertDialogS
 	protected int loc_res_id;
 	protected int ip_addr_res_id;
 	
+	/**
+	 * Basic Constructor
+	 * @param activity the activity that embeds the dialog boxes.
+	 * @param directory the directory to setup.
+	 */
 	public LanSetupDialogSequence(Activity activity, BaseDirectory<D> directory) {
 		super(activity);
 		this.directory = directory;
@@ -57,6 +70,16 @@ public class LanSetupDialogSequence<D extends Serializable> extends AlertDialogS
 		this.promptReqCode = false;
 	}
 	
+	/**
+	 * Standard constructor, that prompts for request codes and displays current directory nodes when
+	 * setup is completed.
+	 * @param activity activity that embeds the dialog boxes.
+	 * @param directory the directory to setup.
+	 * @param row_res_id Resource ID of row view for each node entry.
+	 * @param name_res_id Resource ID of name field for a node.
+	 * @param loc_res_id Resource ID of location field for a node.
+	 * @param ip_addr_res_id Resource ID of address field for a node.
+	 */
 	public LanSetupDialogSequence(Activity activity, BaseDirectory<D> directory, int row_res_id, 
             int name_res_id, int loc_res_id, int ip_addr_res_id) {
 		super(activity);
@@ -68,6 +91,9 @@ public class LanSetupDialogSequence<D extends Serializable> extends AlertDialogS
 		this.ip_addr_res_id = ip_addr_res_id;
 	}
 
+	/**
+	 * Run LAN setup dialog sequence. Run customized sequence (see runSeqWithGeneratedReqCode) if request code prompt is omitted.
+	 */
 	@Override
 	public void run() {
 		if (!promptReqCode) {
@@ -77,6 +103,14 @@ public class LanSetupDialogSequence<D extends Serializable> extends AlertDialogS
 		}
 	}
 	
+	/**
+	 * Run custom LAN setup sequence:
+	 *   i. If wifi-adapters are not enabled, run wifi-adapter dialog prompt. Otherwise run the following
+	 *   ii. Run display name prompt dialog box
+	 *   iii. Run role choice prompt dialog box
+	 *   iv. If member chosen at iii., run request code prompt dialog prompt. Otherwise, randomly generate a request code.
+	 *   v. Run peer list display dialog box.
+	 */
 	protected void runSeqWithGeneratedReqCode() {
 		if( !directory.isWifiEnabled() ) {
 			runDialog( new DirectoryWifiAdapterDialogBuilder<D>( activity, directory ) );

@@ -57,6 +57,9 @@ import comingle.logging.CoLogger;
 
 /**
  * 
+ * The base class of a CoMingle runtime. This is the class that the generated codes of CoMingle Programs
+ * extends, containing base functionality of a CoMingle Runtime.
+ * 
  * @author Edmund S.L. Lam
  *
  */
@@ -92,6 +95,11 @@ public abstract class RewriteMachine extends Thread {
 	protected boolean isSolo = false;
 	protected int location;
 	
+	/**
+	 * Basic Constructor
+	 * @param neighborhood instance of a neighborhood, through which this runtime instance communicates.
+	 * @param send_listener the data sending listener.
+	 */
 	public RewriteMachine(Neighborhood neighborhood, SendListener send_listener) {
 		stores = new LinkedList<Store>();
 		count_id = 0;
@@ -107,10 +115,18 @@ public abstract class RewriteMachine extends Thread {
 		// setupNeighborhood(neighborhood, send_listener);
 	}
 	
+	/**
+	 * Default Constructor. Constructs the rewrite machine without a neighborhood.
+	 */
 	public RewriteMachine() {
 		this(null, null);
 	}
 
+	/**
+	 * Setup the neighborhood
+	 * @param neighborhood instance of a neighborhood, through which this runtime instance communicates.
+	 * @param send_listener the data sending listener.
+	 */
 	public void setupNeighborhood(Neighborhood neighborhood, SendListener send_listener) {
 		this.neighborhood = neighborhood;
 		this.send_buffers = new SendBuffers();
@@ -120,8 +136,16 @@ public abstract class RewriteMachine extends Thread {
 		this.location = neighborhood.getLocation();
 	}
 	
+	/**
+	 * Get location of this rewrite machine
+	 * @return location of this rewrite machine
+	 */
 	public int getLocation() { return neighborhood.getLocation(); }
 	
+	/**
+	 * Returns all locations that this rewrite machine knows of.
+	 * @return
+	 */
 	public Collection<Integer> getLocations() {
 		return send_buffers.getLocations();
 	}
@@ -360,6 +384,11 @@ public abstract class RewriteMachine extends Thread {
 	
 	// External Actuation
 	
+	/**
+	 * Set the actuator of the actuation named act_name.
+	 * @param act_name the name of the actuation.
+	 * @param action the action executed by this actuator.
+	 */
 	public <T> void setActuator(String act_name, ActuatorAction<T> action) {
 		actuators.setActuator(act_name, action);
 	}

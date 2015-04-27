@@ -39,6 +39,14 @@ import android.widget.EditText;
 import comingle.comms.directory.BaseDirectory;
 import comingle.comms.misc.Barrier;
 
+/**
+ * 
+ * Builder of a Dialog box that prompts user for request code input for the directory.
+ * 
+ * @author Edmund S.L. Lam
+ *
+ * @param <D> Type of administrative data handled by the directory.
+ */
 public class DirectoryReqCodeDialogBuilder<D extends Serializable> extends DirectoryDialogBuilder<D> {
 
 	public DirectoryReqCodeDialogBuilder(Activity activity, BaseDirectory<D> directory) {

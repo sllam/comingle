@@ -39,6 +39,14 @@ import android.provider.Settings;
 import comingle.comms.directory.BaseDirectory;
 import comingle.comms.misc.Barrier;
 
+/**
+ * 
+ * Builder of a Dialog box that request user to turn on wifi adapters.
+ * 
+ * @author Edmund S.L. Lam
+ *
+ * @param <D> Type of administrative data handled by the directory.
+ */
 public class DirectoryWifiAdapterDialogBuilder<D extends Serializable> extends DirectoryDialogBuilder<D> {
 
 	public static final int DEFAULT_ACT_REQ_CODE = 1023;

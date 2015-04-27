@@ -35,30 +35,70 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 
+/**
+ * 
+ * This abstract class defines the family of dialog box builders for the directory.
+ * The intend of these dialog boxes is to prompt for user input for parameters of
+ * the Android application's BaseDirectory. Dialog boxes created by the dialog builder
+ * contains a simple synchronization mechanism to allow sequencing of such dialogs.
+ * 
+ * @author Edmund S.L. Lam
+ *
+ * @param <D> Type of administrative data handled by the directory.
+ */
 public abstract class DirectoryDialogBuilder<D extends Serializable> {
 
 	protected final Activity activity;
 	protected BaseDirectory<D> directory;
 	
+	/**
+	 * Basic Constructor
+	 * @param activity the activity that embeds the dialogs
+	 * @param directory the directory to be modified
+	 */
 	public DirectoryDialogBuilder(Activity activity, BaseDirectory<D> directory) {
 		this.activity  = activity;
 		this.directory = directory;
 	}
 	
+	/**
+	 * Retrieve an instance of the dialog box builder. Dialog box created by this builder
+	 * to release given synchronization barrier, when exited.
+	 * @param barrier the synchronization barrier to release.
+	 * @return an instance of the dialog box builder.
+	 */
 	abstract public AlertDialog.Builder getDialogBuilder(Barrier barrier);
 	
+	/**
+	 * Retrieve an instance of the dialog box builder. 
+	 * @return an instance of the dialog box builder.
+	 */
 	public AlertDialog.Builder getDialogBuilder() {
 		return getDialogBuilder(null);
 	}
 	
+	/**
+	 * Retrieve an instance of the dialog box. Dialog box is expected
+	 * to release given synchronization barrier, when exited.
+	 * @param barrier the synchronization barrier to release.
+	 * @return an instance of the dialog box.
+	 */
 	public Dialog getDialog(Barrier barrier) {
 		return getDialogBuilder(barrier).create();
 	}
-	
+
+	/**
+	 * Retrieve an instance of the dialog box. 
+	 * @return an instance of the dialog box.
+	 */
 	public Dialog getDialog() {
 		return getDialog(null);
 	}
 	
+	/**
+	 * Release the given synchronization barrier.
+	 * @param barrier the synchronization barrier to release.
+	 */
 	protected void releaseBarrier(Barrier barrier) {
 		if(barrier != null) {
 			barrier.release();

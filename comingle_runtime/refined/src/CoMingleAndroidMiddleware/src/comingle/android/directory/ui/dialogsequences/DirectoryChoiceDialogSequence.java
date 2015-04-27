@@ -26,7 +26,6 @@ Programming via Join Patterns with Guards, Propagation and More) from the Qatar 
 
 package comingle.android.directory.ui.dialogsequences;
 
-
 import java.util.LinkedList;
 import java.util.List;
 
@@ -38,6 +37,14 @@ import comingle.comms.message.Message;
 
 import android.app.Activity;
 
+/**
+ * 
+ * An instance of the AlertDialogSequence, that prepends a choice directory dialog box before the directory
+ * setup sequence of the user's choice. Currently works for Wifi-direct and LAN directory.
+ * 
+ * @author Edmund S.L. Lam
+ *
+ */
 public class DirectoryChoiceDialogSequence extends AlertDialogSequence<Message> {
 
 	protected int adminPort;
@@ -56,6 +63,17 @@ public class DirectoryChoiceDialogSequence extends AlertDialogSequence<Message> 
 	BaseDirectory<Message> directory;
 	protected int directoryId = -1;
 	
+	/**
+	 * Basic Constructor
+	 * @param activity the activity that embeds the dialog boxes.
+	 * @param adminPort the admin port number used by the constructed directory.
+	 * @param defaultReqCode the default request code of the directory.
+	 * @param localDeviceId the device ID of the application that runs this dialog sequence.
+	 * @param row_res_id Resource ID of row view for each node entry.
+	 * @param name_res_id Resource ID of name field for a node.
+	 * @param loc_res_id Resource ID of location field for a node.
+	 * @param ip_addr_res_id Resource ID of address field for a node.
+	 */
 	public DirectoryChoiceDialogSequence(Activity activity, int adminPort, String defaultReqCode, String localDeviceId,
 			int row_res_id, int name_res_id, int loc_res_id, int ip_addr_res_id) {
 		super(activity);
@@ -69,10 +87,18 @@ public class DirectoryChoiceDialogSequence extends AlertDialogSequence<Message> 
 		this.ip_addr_res_id = ip_addr_res_id;
 	}
 	
+	/**
+	 * Returns true if directory has been chosen
+	 * @return true if directory has been chosen
+	 */
 	public boolean directoryChosen() {
 		return directoryChosen;
 	}
 	
+	/**
+	 * Based on the chosen directory, return the corresponding directory setup sequence.
+	 * @return Directory setup sequence, if directory has been chosen. Returns null otherwise.
+	 */
 	public AlertDialogSequence<Message> getDirectorySetupSequence() {
 		switch(directoryId) {
 			case LanDirectory.LAN_NETWORK_ID:
@@ -85,20 +111,36 @@ public class DirectoryChoiceDialogSequence extends AlertDialogSequence<Message> 
 		return null;
 	}
 
+	/**
+	 * Add the given directory chosen listener.
+	 * @param l the directory chosen listener.
+	 */
 	public void addDirectoryChosenListener(DirectoryChosenListener<Message> l) {
 		listeners.add(l);
 	}
 
+	/**
+	 * Remove the given directory chosen listener.
+	 * @param l the directory chosen listener to remove.
+	 */
 	public void removeDirectoryChosenListener(DirectoryChosenListener<Message> l) {
 		listeners.remove(l);
 	}
 	
+	/**
+	 * Invoke the actions of the registered directory chosen listener, with given directory.
+	 * @param directory the directory that is chosen.
+	 */
 	protected void doDirectoryChosenActions(BaseDirectory<Message> directory) {
 		for(DirectoryChosenListener<Message> l: listeners) {
 			l.doDirectoryChosenAction(directory);
 		}
 	}
 	
+	/**
+	 * Run the directory choice dialog, invoke the directory chosen listeners, and finally run the corresponding
+	 * directory setup sequence of the chosen directory.
+	 */
 	@Override
 	public void run() {
 		DirectoryChoiceDialogBuilder builder = new DirectoryChoiceDialogBuilder(

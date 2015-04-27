@@ -45,6 +45,15 @@ import comingle.comms.listeners.OwnerTerminationListener;
 import comingle.comms.listeners.RoleEstablishedListener;
 import comingle.comms.message.Message;
 
+/**
+ * 
+ * Composite directory class is the top level directory element that handles all communications of a CoMingle Android runtime.
+ * It is intended to combine a heterogeneous collection of directories under on common Neighborhood interface. Composite directory
+ * has one main directory, and can have multiple sub-directories attached to it. The main directory is also considered as a sub-directory.
+ * 
+ * @author Edmund S.L. Lam
+ *
+ */
 public class CompositeDirectory extends ListeningPost<Message,String> {
 
 	protected static final String TAG = "CompositeDirectory";
@@ -54,6 +63,10 @@ public class CompositeDirectory extends ListeningPost<Message,String> {
 	@SuppressWarnings("rawtypes")
 	protected final Map<Integer,BaseDirectory> auxDirs;
 	
+	/**
+	 * Basic Constructor
+	 * @param mainDir the main directory of the composite directory.
+	 */
 	@SuppressWarnings("rawtypes")
 	public CompositeDirectory(BaseDirectory<Message> mainDir) {
 		super(null);
@@ -62,11 +75,18 @@ public class CompositeDirectory extends ListeningPost<Message,String> {
 		auxDirs.put(mainDir.getNetworkID(), mainDir);
 	}
 	
+	/**
+	 * Attach the given directory to this composite directory
+	 * @param newDir
+	 */
 	@SuppressWarnings("rawtypes")
 	public void attachDirectory(BaseDirectory newDir) {
 		auxDirs.put(newDir.getNetworkID(), newDir);
 	}
 	
+	/**
+	 * Close this composite directory, by closing all directories attached to it.
+	 */
 	public void close() {
 		for(BaseDirectory dir: auxDirs.values()) {
 			dir.close();
@@ -77,22 +97,36 @@ public class CompositeDirectory extends ListeningPost<Message,String> {
 	// Android Activity Network Notification Methods //
 	///////////////////////////////////////////////////
 	
+	/**
+	 * Resume all network notifications of each directory.
+	 */
 	public void resumeNetworkNotifications() {
 		for(BaseDirectory dir: auxDirs.values()) {
 			dir.resumeNetworkNotifications();
 		}
 	}
 
+	/**
+	 * Pause all network notifications of each directory.
+	 */
 	public void pauseNetworkNotifications() {
 		for(BaseDirectory dir: auxDirs.values()) {
 			dir.pauseNetworkNotifications();
 		}
 	}
 	
+	/**
+	 * Returns true if main directory has detected wifi-adapters enabled.
+	 * @return true if main directory has detected wifi-adapters enabled.
+	 */
 	public boolean isWifiEnabled() {
 		return mainDir.isWifiEnabled();
 	}
-	
+
+	/**
+	 * Returns true if main directory has detected wifi-adapters is connected.
+	 * @return true if main directory has detected wifi-adapters is connected.
+	 */
 	public boolean isWifiConnected() {
 		return mainDir.isWifiConnected();
 	}
@@ -101,10 +135,18 @@ public class CompositeDirectory extends ListeningPost<Message,String> {
 	// Identity Methods //
 	//////////////////////
 	
+	/**
+	 * Returns true if main directory is an owner directory
+	 * @return true if main directory is an owner directory
+	 */
 	public boolean isOwner() {
 		return mainDir.isOwner();
 	}
-	
+
+	/**
+	 * Returns true if main directory is an member directory
+	 * @return true if main directory is an member directory
+	 */
 	public boolean isMember() {
 		return mainDir.isMember();
 	}

@@ -43,6 +43,14 @@ import comingle.facts.SerializedFact;
 import comingle.nodes.SendListener;
 import comingle.rewrite.RewriteMachine;
 
+/**
+ * 
+ * The top-level runtime entity that combines a CoMingle Runtime and a Composite Directory, in the context of an Android activity.
+ * 
+ * @author Edmund S.L. Lam
+ *
+ * @param <RW> the Rewrite Machine instance
+ */
 public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeManager<SerializedFact,String> implements Logger {
 	
 	protected static final String TAG = "CoMingleAndroidRuntime";
@@ -63,6 +71,14 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 	
 	protected volatile boolean isRewriteReady = false;
 	
+	/**
+	 * Basic Constructor
+	 * @param activity the activity that embeds this CoMingle runtime instance.
+	 * @param rwClass the class of the CoMingle runtime.
+	 * @param adminPort port number for administrative messages.
+	 * @param factPort port number for actual payload data.
+	 * @param defaultReqCode default request code of the application.
+	 */
 	public CoMingleAndroidRuntime(Activity activity, Class<RW> rwClass, int adminPort, int factPort, String defaultReqCode) {
 		super( new SocketDataPipe<SerializedFact>( factPort ));
 		this.rwClass   = rwClass;
@@ -74,6 +90,12 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 		this.location  = runtimeID.hashCode();
 	}
 	
+	/**
+	 * Default constructor, setup runtime with admin port '8010' and data port '6565'.
+	 * @param activity the activity that embeds this CoMingle runtime instance.
+	 * @param rwClass the class of the CoMingle runtime.
+	 * @param defaultReqCode default request code of the application.
+	 */
 	public CoMingleAndroidRuntime(Activity activity, Class<RW> rwClass, String defaultReqCode) {
 		this(activity, rwClass, DEFAULT_ADMIN_PORT, DEFAULT_FACT_PORT, defaultReqCode);
 	}
@@ -82,6 +104,10 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 	// Directory Methods //
 	///////////////////////
 	
+	/**
+	 * Initializes with given BaseDirectory as the main directory
+	 * @param mainDir the main directory
+	 */
 	protected void initCompositeDirectory(BaseDirectory<Message> mainDir) {
 		directory = new CompositeDirectory(mainDir);
 		init();
@@ -90,6 +116,14 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 	
 	protected DirectoryChoiceDialogSequence dirChoiceDiagSeq = null;
 	
+	/**
+	 * Initialize standard directory setup dialog sequence
+	 * @param peer_list_row Resource ID of row view for each node entry.
+	 * @param peer_name Resource ID of name field for a node.
+	 * @param peer_loc Resource ID of location field for a node.
+	 * @param peer_ip Resource ID of address field for a node.
+	 * @param postDirChoiceListener the directory chosen listener to invoke after user has chosen directory.
+	 */
 	public void initStandardDirectorySetup(int peer_list_row, int peer_name, int peer_loc, int peer_ip, 
 			DirectoryChosenListener<Message> postDirChoiceListener) {
 		Log.i(TAG, "Initiatizing standard directory setup routine...");
@@ -109,11 +143,21 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 		dirChoiceDiagSeq.start();
 	}
 	
+	/**
+	 * Initialize standard directory setup dialog sequence,  with directory chosen listener set to null.
+	 * @param peer_list_row Resource ID of row view for each node entry.
+	 * @param peer_name Resource ID of name field for a node.
+	 * @param peer_loc Resource ID of location field for a node.
+	 * @param peer_ip Resource ID of address field for a node.
+	 */
 	public void initStandardDirectorySetup(int peer_list_row, int peer_name, int peer_loc, int peer_ip) {
 		this.initStandardDirectorySetup(peer_list_row, peer_name, peer_loc, peer_ip, null);
 	}
 	
-	
+	/**
+	 * Handling operation for returning from wifi-adapter setup. To be called in 'onActivityResults' operation of the parent activity
+	 * @param requestCode the request code of the activity result return.
+	 */
 	public void handleOnActivityResults(int requestCode) {
 		if (this.dirChoiceDiagSeq != null && requestCode == DirectoryWifiAdapterDialogBuilder.DEFAULT_ACT_REQ_CODE){
 			Log.i(TAG, "Returning from network adapter setup, reopening directory setup");
@@ -121,13 +165,19 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 		}
 	}
 	
+	/**
+	 * Resume all network notifications. Typically called in 'onResume' of the parent activity
+	 */
 	public void resumeNetworkNotifications() {
 		if (directory != null) {
 			Log.i(TAG, "Resuming directory network notifications");
 			directory.resumeNetworkNotifications();
 		}
 	}
-	
+
+	/**
+	 * Pause all network notifications. Typically called in 'onPause' of the parent activity
+	 */
 	public void pauseNetworkNotifications() {
 		if ( directory != null) {
 			Log.i(TAG, "Pausing directory network notifications");
@@ -135,6 +185,10 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 		}
 	}
 	
+	/**
+	 * Returns the composite directory of this runtime.
+	 * @return the composite directory of this runtime.
+	 */
 	public CompositeDirectory getDirectory() {
 		return directory;
 	}
@@ -143,6 +197,10 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 	// Rewrite Machine Methods //
 	/////////////////////////////
 	
+	/**
+	 * Initialize the rewrite machine
+	 * @return true if the rewrite machine is initialized.
+	 */
 	public boolean initRewriteMachine() {
 		
 		if (directory == null) { return false; }
@@ -180,6 +238,10 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 		
 	}
 	
+	/**
+	 * Start the rewrite machine
+	 * @return true if the rewrite machine is successfully started.
+	 */
 	public boolean startRewriteMachine() {
 		if (directory != null && rewriteMachine != null) {
 			rewriteMachine.init();
@@ -193,10 +255,17 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 		}
 	}
 	
+	/**
+	 * Returns the rewrite machine
+	 * @return the rewrite machine
+	 */
 	public RW getRewriteMachine() {
 		return rewriteMachine;
 	}
 	
+	/**
+	 * Close all operations of the rewrite machine.
+	 */
 	public void close() {
 		log("Closing all connections");
 		super.close();
@@ -212,14 +281,26 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 	// Identity Methods //
 	//////////////////////
 	
+	/**
+	 * Get the location ID of this rewrite machine.
+	 * @return the location ID of this rewrite machine.
+	 */
 	public int getLocation() {
 		return directory.getLocation();
 	}
 	
+	/**
+	 * Returns true if this runtime is an owner.
+	 * @return true if this runtime is an owner.
+	 */
 	public boolean isOwner() {
 		return directory.isOwner();
 	}
 
+	/**
+	 * Returns true if this runtime is a member.
+	 * @return true if this runtime is a member.
+	 */
 	public boolean isMember() {
 		return directory.isMember();
 	}
@@ -228,6 +309,10 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 	// Runtime Status Methods //
 	////////////////////////////
 	
+	/**
+	 * Returns true if rewrite runtime has been started.
+	 * @return true if rewrite runtime has been started.
+	 */
 	public boolean isRewriteReady() {
 		return isRewriteReady;
 	}

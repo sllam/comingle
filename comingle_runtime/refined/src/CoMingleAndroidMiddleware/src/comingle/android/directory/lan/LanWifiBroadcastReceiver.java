@@ -37,6 +37,13 @@ import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.WifiP2pManager.Channel;
 import android.util.Log;
 
+/**
+ * 
+ * Broadcast receiver instance for the LAN Directory
+ * 
+ * @author Edmund S.L. Lam
+ *
+ */
 public class LanWifiBroadcastReceiver extends BroadcastReceiver {
 
 	private static String TAG = "LanWifiBroadcastReceiver";

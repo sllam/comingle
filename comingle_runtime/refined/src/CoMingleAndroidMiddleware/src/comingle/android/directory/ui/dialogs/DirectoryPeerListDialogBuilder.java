@@ -48,6 +48,14 @@ import comingle.comms.directory.NodeInfo;
 import comingle.comms.listeners.DirectoryChangedListener;
 import comingle.comms.misc.Barrier;
 
+/**
+ * 
+ * Builder of a Dialog box that displays information on the current nodes maintained by the directory
+ * 
+ * @author Edmund S.L. Lam
+ *
+ * @param <D> Type of administrative data handled by the directory.
+ */
 public class DirectoryPeerListDialogBuilder<D extends Serializable> extends DirectoryDialogBuilder<D> {
 
 	class PeerInfoArrayAdapter extends ArrayAdapter<NodeInfo> {

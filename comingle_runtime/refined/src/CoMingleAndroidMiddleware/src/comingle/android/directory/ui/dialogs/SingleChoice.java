@@ -26,6 +26,13 @@ Programming via Join Patterns with Guards, Propagation and More) from the Qatar 
 
 package comingle.android.directory.ui.dialogs;
 
+/**
+ * 
+ * A simple class that contains a single integer, modeling a mutable choice.
+ * 
+ * @author Edmund S.L. Lam
+ *
+ */
 public class SingleChoice {
 	
 	protected int choice;

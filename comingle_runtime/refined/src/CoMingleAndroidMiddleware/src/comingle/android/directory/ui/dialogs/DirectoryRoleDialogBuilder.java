@@ -37,6 +37,14 @@ import android.content.DialogInterface;
 import comingle.comms.directory.BaseDirectory;
 import comingle.comms.misc.Barrier;
 
+/**
+ * 
+ * Builder of a Dialog box that prompts user for role input of the directory.
+ * 
+ * @author Edmund S.L. Lam
+ *
+ * @param <D> Type of administrative data handled by the directory.
+ */
 public class DirectoryRoleDialogBuilder<D extends Serializable> extends DirectoryDialogBuilder<D> {
 
 	public DirectoryRoleDialogBuilder(Activity activity, BaseDirectory<D> directory) {

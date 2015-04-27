@@ -30,6 +30,14 @@ import java.io.Serializable;
 
 import comingle.comms.directory.BaseDirectory;
 
+/**
+ * 
+ * Listener class that embeds an action to be triggered when user has decided what directory to use.
+ * 
+ * @author Edmund S.L. Lam
+ *
+ * @param <D> Type of administrative data handled by the directory.
+ */
 abstract public class DirectoryChosenListener<D extends Serializable> {
 
 	abstract public void doDirectoryChosenAction(BaseDirectory<D> directory);
