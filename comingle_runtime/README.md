@@ -24,5 +24,6 @@ the 'refined' folder, you will find:
 Documentations
 ==============
 
-Coming soon! Sorry, we are working on it now. For now, please visit https://github.com/sllam/comingle/tree/master/android_apps/CoMingleDragRacingRefined for an example on how to integrate CoMingle with your very own distributed Android app.
+Coming soon! Sorry, we are working on it now. For now, please visit https://github.com/sllam/comingle/tree/master/android_apps/CoMingleDragRacingRefined for an example on how to integrate CoMingle with your very own distributed Android app. Please
+also see Java Docs in the refined folder.
 
