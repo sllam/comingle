@@ -13,10 +13,12 @@ Programming via Join Patterns with Guards, Propagation and More) from the Qatar 
 News
 ====
 
-* To appear in proceeding of the 10th International Federated Conference on Distributed Computing Techniques, Coordination'2015
-(http://discotec2015.inria.fr/francais-coordination-2015-accepted-papers/).
+* Source codes for CoMingle Android libraries added!
 
 * New CoMingle runtime now works with Wifi-Direct as well as Local-Area-Networks! 
+
+* To appear in proceeding of the 10th International Federated Conference on Distributed Computing Techniques, Coordination'2015
+(http://discotec2015.inria.fr/francais-coordination-2015-accepted-papers/).
 
 What is CoMingle?
 =================
