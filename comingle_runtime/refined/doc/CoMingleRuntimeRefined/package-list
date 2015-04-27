@@ -1,0 +1,13 @@
+comingle.actuation
+comingle.facts
+comingle.goals
+comingle.hash
+comingle.lib
+comingle.logging
+comingle.misc
+comingle.mset
+comingle.nodes
+comingle.rewrite
+comingle.store
+comingle.tools
+comingle.tuple
