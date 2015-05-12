@@ -345,6 +345,15 @@ public abstract class BaseDirectory<D extends Serializable> extends ListeningPos
 		// establishRole();
 	}
 	
+	public String getOwnerIP() {
+		for(NodeInfo node: this.getNodes()) {
+			if(node.role.equals("Owner")) {
+				return node.ipAddress;
+			}
+		}
+		return ownerIP;
+	}
+	
 	/**
 	 * @return true if this directory is an owner directory
 	 */
