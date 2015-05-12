@@ -26,8 +26,12 @@ Programming via Join Patterns with Guards, Propagation and More) from the Qatar 
 
 package comingle.lib;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
+import comingle.comms.ntp.NTPClient;
 import comingle.mset.SimpMultiset;
 import comingle.tuple.*;
 
@@ -87,6 +91,16 @@ public class ExtLib {
 		} else {
 			return null;
 		}
+	}
+	
+	public static <T> SimpMultiset<T> pick(SimpMultiset<T> ls, int num) {
+		SimpMultiset<T> os = new SimpMultiset<T>();
+		for(int i=0; i<num; i++) {
+			if(i<ls.size()) {
+				os.add(ls.get(i));
+			}
+		}
+		return os;
 	}
 	
 	public static <T> LinkedList<Tuple2<T,T> > zip(LinkedList<T> ls1, LinkedList<T> ls2) {
@@ -256,11 +270,100 @@ public class ExtLib {
 	}*/
 	
 	public static boolean strongest(String t, SimpMultiset<String> ts) {
+		if(ts.size() == 0) { return false; }
 		for(String s: ts) {
 			int compare = t.compareTo(s);
 			if (compare < 0) { return false; }
 		}
 		return true;
+	}
+	
+	public static boolean hasStronger(SimpMultiset<String> ts, String t) {
+		if (ts.size() == 0) { return true; }
+		for(String s: ts) {
+			int compare = s.compareTo(t);
+			if (compare > 0) { return true; }
+		}
+		return false;
+	}
+	
+	public static <T> Tuple2<T,LinkedList<T>> uncons(LinkedList<T> ls1) {
+		T l = ls1.get(0);
+		LinkedList<T> ls2 = new LinkedList<T>();
+		for(int i=1; i<ls1.size(); i++) {
+			ls2.add(ls1.get(i));
+		}
+		return new Tuple2<T,LinkedList<T>>(l,ls2);
+	}
+	
+	/*
+	public static Calendar timeNow(int dummy) {
+		return Calendar.getInstance();
+	}
+	
+	public static Calendar addSeconds(Calendar cal, int secs) {
+		Calendar cal2 = (Calendar) cal.clone();
+		cal2.add(Calendar.SECOND, secs);
+		return cal2;
+	}*/
+	
+	private static Long localTimeOffset = null;
+	private static Long localTimeOffset() {
+		if (localTimeOffset == null) {
+			localTimeOffset = NTPClient.getOffSetTime();
+		} 
+		return localTimeOffset;
+	}
+	
+	public static String timeNow(int secs) {
+		DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");	
+		long timeInMillis = Calendar.getInstance().getTimeInMillis() - localTimeOffset() + (secs*1000);
+		return df.format( new Date(timeInMillis) );
+		/*
+		if (secs > 0) {
+			cal.add(Calendar.SECOND, secs);
+		}
+		cal.add(Calendar.MILLISECOND, localTimeOffset());
+		return df.format(cal.getTime()); */
+	}
+	
+	public static String addSeconds(String date, int secs) {
+		DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		return df.format( new Date(parseDate(date) + (secs*1000)) );
+		/*
+		Calendar newCal = parseCalendar(date);
+		newCal.add(Calendar.SECOND, secs);
+		return df.format(newCal.getTime());*/
+	}
+	
+	public static Long parseDate(String date) {
+		DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		try {
+			Date dt = df.parse(date);
+			return dt.getTime();
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;		
+	}
+	
+	public static Calendar parseCalendar(String date) {
+		DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		try {
+			Date dt = df.parse(date);
+			Calendar newCal = Calendar.getInstance();
+			newCal.setTime(dt);
+			return newCal;
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	public static long getLocalTime(String date) {
+		return parseDate(date) + localTimeOffset();
 	}
 	
 }
