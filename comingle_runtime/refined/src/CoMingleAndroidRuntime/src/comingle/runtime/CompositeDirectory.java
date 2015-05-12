@@ -93,6 +93,14 @@ public class CompositeDirectory extends ListeningPost<Message,String> {
 		}
 	}
 	
+	////////////////////////////
+	// Main Directory Methods //
+	////////////////////////////
+	
+	public String getName(int loc) {
+		return mainDir.getName(loc);
+	}
+	
 	///////////////////////////////////////////////////
 	// Android Activity Network Notification Methods //
 	///////////////////////////////////////////////////
