@@ -29,7 +29,11 @@ package comingle.runtime;
 import java.util.List;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnClickListener;
 import android.util.Log;
+import android.widget.Toast;
 import comingle.android.directory.ui.dialogs.DirectoryWifiAdapterDialogBuilder;
 import comingle.android.directory.ui.dialogsequences.DirectoryChoiceDialogSequence;
 import comingle.android.directory.ui.dialogsequences.DirectoryChosenListener;
@@ -38,8 +42,10 @@ import comingle.comms.directory.BaseDirectory;
 import comingle.comms.identity.IdentityGenerator;
 import comingle.comms.log.Logger;
 import comingle.comms.message.Message;
+import comingle.comms.ntp.PseudoNTPClient;
 import comingle.comms.sockets.SocketDataPipe;
 import comingle.facts.SerializedFact;
+import comingle.lib.ExtLib;
 import comingle.nodes.SendListener;
 import comingle.rewrite.RewriteMachine;
 
@@ -275,6 +281,9 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 		if(rewriteMachine != null) {
 			rewriteMachine.stop_rewrite();
 		}
+		if(this.pntpClient != null) {
+			pntpClient.close();
+		}
 	}
 	
 	//////////////////////
@@ -304,6 +313,36 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 	public boolean isMember() {
 		return directory.isMember();
 	}
+	
+	///////////////////////////////////
+	// Misc Activity Support Methods //
+	///////////////////////////////////
+	
+	public void postAlert(final String title, final String msg) {
+		activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				AlertDialog.Builder alert = new AlertDialog.Builder(activity);
+				alert.setTitle(title);
+				alert.setMessage(msg);
+				alert.setPositiveButton("Ok", new OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						dialog.dismiss();
+					}
+				});
+				alert.show();
+			}
+		});
+	}
+	
+	public void postToast(final String msg) {
+		activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				Toast.makeText(activity, msg, Toast.LENGTH_SHORT).show();
+			}
+		});
+	}	
 	
 	////////////////////////////
 	// Runtime Status Methods //
@@ -364,6 +403,40 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 				Log.i(TAG, msg);	
 			}
 		});
+	}
+	
+	/////////////////////
+	// Time Operations //
+	/////////////////////
+	
+	/*
+	public long getLocalTime(String date) {
+		return ExtLib.getLocalTime(date);
+	} */
+	
+	public long getLocalTime(String date) {
+		long localOffset = getLocalTimeOffset();
+		return ExtLib.parseDate(date) + localOffset;
+	}
+	
+	PseudoNTPClient pntpClient = null;
+	public void initPseudoNTPService() {
+		pntpClient = new PseudoNTPClient( directory.mainDir.getOwnerIP() );
+		if(directory.isOwner()) {
+			pntpClient.servePseudoNTPTime();
+		}
+	}
+	
+	Long localTimeOffset = null;
+	public long getLocalTimeOffset() {
+		if(directory.isOwner()) {
+			return 0;
+		} else {
+			if(localTimeOffset == null) {
+				localTimeOffset = pntpClient.getTimeOffset();
+			}
+			return localTimeOffset;
+		}
 	}
 	
 }
