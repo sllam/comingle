@@ -26,8 +26,10 @@ Programming via Join Patterns with Guards, Propagation and More) from the Qatar 
 
 package comingle.hash;
 
+import java.util.Calendar;
 import java.util.LinkedList;
 
+import comingle.mset.SimpMultiset;
 import comingle.tuple.*;
 
 public class Hash {
@@ -81,6 +83,8 @@ public class Hash {
 
 	public static int hash(LinkedList<?> ls) { return ls.hashCode() + MSRE_HASH_SALT; }
 
+	public static int hash(SimpMultiset<?> ms) { return ms.hashCode() + MSRE_HASH_SALT; }
+	
 	public static int hash(Tuple2<?,?> t) { return join(t.t1.hashCode(),t.t2.hashCode()); }
 
 	public static int hash(Tuple3<?,?,?> t) { return join(t.t1.hashCode(),t.t2.hashCode(),t.t3.hashCode()); }
@@ -93,4 +97,8 @@ public class Hash {
 		return join(t.t1.hashCode(),t.t2.hashCode(),t.t3.hashCode(),t.t4.hashCode(),t.t5.hashCode(),t.t6.hashCode()); 
 	}
 
+	public static int hash(Calendar cal) {
+		return cal.hashCode();
+	}
+	
 }
