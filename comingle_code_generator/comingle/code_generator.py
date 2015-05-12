@@ -66,6 +66,7 @@ BASE_IMPORT_LIST = template('''
 import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.ListIterator;
+import java.util.Calendar;
 
 import comingle.goals.*;
 import comingle.store.*;
@@ -77,6 +78,7 @@ import comingle.misc.*;
 import comingle.mset.*;
 import comingle.actuation.*;
 import comingle.lib.*;
+import comingle.pretty.*;
 ''')
 
 GENERATED_MESSAGE = template('''
@@ -2434,6 +2436,8 @@ class JavaTypeCoercion:
 			return 'boolean' if not boxed else 'Boolean'
 		elif const_name == ast.DEST:
 			return 'String'
+		elif const_name == ast.TIME:
+			return 'Calendar'
 
 	@visit.when(ast.TypeList)
 	def coerce_type_codes(self, arg_type, boxed=False):
@@ -2461,6 +2465,8 @@ class JavaTypeCoercion:
 		const_name = arg_type.name
 		if const_name in [ast.LOC,ast.INT,ast.FLOAT,ast.CHAR,ast.STRING,ast.BOOL,ast.DEST]:
 			return "%s"
+		elif const_name in [ast.TIME]:
+			return "PrettyPrinter.pretty(%s)"
 		else:
 			# TODO: Support other pretty base types
 			return "%s"
