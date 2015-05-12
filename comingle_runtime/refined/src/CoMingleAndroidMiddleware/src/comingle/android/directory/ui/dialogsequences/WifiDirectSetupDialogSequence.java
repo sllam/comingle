@@ -81,9 +81,9 @@ public class WifiDirectSetupDialogSequence<D extends Serializable> extends Alert
 	 */
 	@Override
 	public void run() {
-		if(!directory.isWifiEnabled()) {
+		if(false) { // !directory.isWifiEnabled()) {
 			runDialog( new DirectoryWifiAdapterDialogBuilder<D>( activity, directory ) );
-		} else if(!directory.isWifiConnected()) {
+		} else if(false) { // { !directory.isWifiConnected()) {
 			runDialog( new DirectoryWifiAdapterDialogBuilder<D>(activity, directory, "No Wifi-direct group", "Please form a Wifi-direct group"
 					                                           ,DirectoryWifiAdapterDialogBuilder.DEFAULT_ACT_REQ_CODE) );
 		} else {
