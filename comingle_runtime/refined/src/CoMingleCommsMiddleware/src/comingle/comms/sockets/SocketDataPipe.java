@@ -93,7 +93,7 @@ public class SocketDataPipe<Data extends Serializable> extends DataPipe<Data, St
 			return socket;
 		} catch(Exception e) {
 			if(connect_except_listener != null) {
-				connect_except_listener.performExceptionAction(e);
+				connect_except_listener.performExceptionAction("Connecting to Socket", e);
 			}
 			return null;
 		}
@@ -109,7 +109,7 @@ public class SocketDataPipe<Data extends Serializable> extends DataPipe<Data, St
 			return true;
 		} catch (Exception e) {
 			if(send_except_listener != null) {
-				send_except_listener.performExceptionAction(e);
+				send_except_listener.performExceptionAction("Sending Data", e);
 			}
 			return false;
 		}
@@ -122,7 +122,7 @@ public class SocketDataPipe<Data extends Serializable> extends DataPipe<Data, St
 			} catch (IOException e) {
 
 				if(connect_except_listener != null) {
-					connect_except_listener.performExceptionAction(e);
+					connect_except_listener.performExceptionAction("Closing Socket", e);
 				}
 			}
 		}

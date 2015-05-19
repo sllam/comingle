@@ -342,7 +342,7 @@ public class CompositeDirectory extends ListeningPost<Message,String> {
 	}
 
 	@Override
-	protected void handleReceiveException(Exception e) {
+	protected void handleReceiveException(String t, Exception e) {
 		// TODO Auto-generated method stub
 		
 	}

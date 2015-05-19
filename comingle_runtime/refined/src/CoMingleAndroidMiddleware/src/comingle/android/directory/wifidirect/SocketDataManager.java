@@ -62,11 +62,11 @@ public abstract class SocketDataManager extends BaseDirectory<Message> implement
 	}
 	
 	@Override
-	protected void handleReceiveException(final Exception e) {
+	protected void handleReceiveException(final String task, final Exception e) {
 		activity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				Toast.makeText(activity, "Error when receiving data: " + e.toString(), Toast.LENGTH_SHORT).show();	
+				Toast.makeText(activity, "Error when receiving data (" + task + ") : " + e.toString(), Toast.LENGTH_SHORT).show();	
 			}
 		});
 	}

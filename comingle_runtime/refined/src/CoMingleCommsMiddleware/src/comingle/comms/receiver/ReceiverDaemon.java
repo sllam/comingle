@@ -84,9 +84,9 @@ abstract public class ReceiverDaemon<Data extends Serializable, Addr> extends Th
 	 * Invoke exception listener
 	 * @param e the exception that caused this invocation. 
 	 */
-	protected void performExceptionAction(Exception e) {
+	protected void performExceptionAction(String t, Exception e) {
 		if (except_listener != null && proceed) { 
-			except_listener.performExceptionAction(e);
+			except_listener.performExceptionAction(t, e);
 		}
 	}
 	
@@ -102,7 +102,7 @@ abstract public class ReceiverDaemon<Data extends Serializable, Addr> extends Th
 			data_list = (List<Data>) input_obj;
 		} catch (Exception e1) {
 			try { AdminToken admin = (AdminToken) input_obj; }
-			catch (Exception e2) { performExceptionAction(e2); }
+			catch (Exception e2) { performExceptionAction("Admin Token Casting", e2); }
 			// TODO Admin stuff, current we only anticipate terminate orders, so do nothing.
 			return;
 		}
@@ -126,12 +126,12 @@ abstract public class ReceiverDaemon<Data extends Serializable, Addr> extends Th
 				try {
 					receiveData();
 				} catch (Exception e) {
-					performExceptionAction(e);
+					performExceptionAction("Receiving Data", e);
 				}
 			}
 			// serverSocket.close();
 		} catch (Exception e) {
-			performExceptionAction(e);
+			performExceptionAction("Initiating Daemon", e);
 		}
 	}
 	

@@ -66,9 +66,10 @@ abstract public class DataPipeManager<Data extends Serializable, Addr> extends T
 	
 	/**
 	 * The routine invoked whenever an exception occurred during receiving of data
+	 * @param task human readable description of the location of the exception
 	 * @param e the exception that occurred.
 	 */
-	abstract protected void handleReceiveException(Exception e);
+	abstract protected void handleReceiveException(String task, Exception e);
 	
 	/**
 	 * Initializes the data pipe.
@@ -85,8 +86,8 @@ abstract public class DataPipeManager<Data extends Serializable, Addr> extends T
 			);
 
 			ExceptionListener except_listener = new ExceptionListener() {
-				public void performExceptionAction(final Exception e) {
-					handleReceiveException(e);
+				public void performExceptionAction(final String t, final Exception e) {
+					handleReceiveException(t, e);
 				}
 			};
 			

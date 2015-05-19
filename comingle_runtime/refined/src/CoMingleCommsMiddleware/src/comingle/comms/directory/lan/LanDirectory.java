@@ -226,8 +226,8 @@ abstract public class LanDirectory extends BaseDirectory<Message> implements Mes
 		});
 		multicastPipe.setExceptionListener(new ExceptionListener() {
 			@Override
-			public void performExceptionAction(Exception e) {
-				err(e.toString());				
+			public void performExceptionAction(String task, Exception e) {
+				err(task + ": " + e.toString());				
 			}
 		});
 		multicastPipe.initReceiver();
@@ -265,8 +265,8 @@ abstract public class LanDirectory extends BaseDirectory<Message> implements Mes
 	}
 
 	@Override
-	protected void handleReceiveException(Exception e) {
-		err(e.toString());
+	protected void handleReceiveException(String task, Exception e) {
+		err(task + ": " + e.toString());
 	}
 
 

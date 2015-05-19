@@ -101,7 +101,7 @@ public class MulticastDataPipe extends DataPipe<String, String> {
 				socket.close();
 			} catch (Exception e) {
 				if(connect_except_listener != null) {
-					connect_except_listener.performExceptionAction(e);
+					connect_except_listener.performExceptionAction("Closing Socket", e);
 				}
 			}
 		}
@@ -120,7 +120,7 @@ public class MulticastDataPipe extends DataPipe<String, String> {
 			socket  = new DatagramSocket();
 		} catch(Exception e) {
 			if(connect_except_listener != null) {
-				connect_except_listener.performExceptionAction(e);
+				connect_except_listener.performExceptionAction("Initiating Multicast Socket", e);
 			}
 			return;
 		}
@@ -132,7 +132,7 @@ public class MulticastDataPipe extends DataPipe<String, String> {
 		} catch(Exception e) {
 			close(socket);
 			if(send_except_listener != null) {
-				send_except_listener.performExceptionAction(e);
+				send_except_listener.performExceptionAction("Broadcasting Data", e);
 			}
 			return;
 		}

@@ -30,6 +30,6 @@ import java.util.EventListener;
 
 abstract public class ExceptionListener implements EventListener {
 
-	abstract public void performExceptionAction(final Exception e);
+	abstract public void performExceptionAction(String task, final Exception e);
 
 }
