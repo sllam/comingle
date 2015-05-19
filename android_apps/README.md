@@ -66,6 +66,11 @@ time to time, we will be adding more examples!
   All instances of the Comingle apps (include the other apps here) bootstraps an instance 
   of this service to maintain an active communication route to each device in the group.
 
+- Musical Shares
+  Bounce a sequence of musical notes between Android devices in an ensemble.
+  Current version is only a demo: builds a linear chain ensemble and sends 5 notes
+  across. We'll soon upgrade it and make it more fun!
+
 Note
 ====
 
