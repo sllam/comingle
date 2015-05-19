@@ -1,0 +1,80 @@
+
+ensem musicalshares {
+
+	module comingle.lib.ExtLib import {
+		size :: {B} -> int.
+		length :: [E] -> int.
+		uncons :: [D] -> (D,[D]).
+		addSeconds :: (time,int) -> time.
+		diff :: ({A},{A}) -> {A}.
+		pick :: ({A},int) -> {A}.
+		mset :: [C] -> {C}.
+	}
+
+	module musicalshares.lib.CommLib import {
+		decideTargets :: (loc,{loc}) -> {loc}.
+	}
+
+	predicate distribute :: ([string],{loc},{(loc,loc)}) -> trigger.
+	predicate start      :: time -> trigger.
+
+	predicate all        :: {loc} -> fact.
+	predicate src        :: loc -> fact.
+	predicate edge       :: loc -> fact.
+	predicate transScore :: (loc,[string],int) -> fact.
+	predicate note  :: (string,int) -> fact.
+	predicate fire  :: time -> fact.
+	predicate playLog :: (string,time) -> fact.
+
+	predicate refresh :: actuator.
+	predicate play    :: (string,time) -> actuator.
+	predicate completed :: actuator.
+
+	predicate reset :: trigger.
+	predicate empty :: fact.
+
+	export query note(_,_).
+	export query playLog(_,_).
+
+	rule dist :: [I]distribute(Ns,Vs,Es) --o { [X]edge(Y),[X]edge(Y) | (X,Y)<-Es }, [I]all(Vs), 
+                                                 { [V]src(I) | V<-Vs }, [I]transScore(I,Ns,0).
+
+	rule fwd :: { [X]edge(Y) | Y->Ys } \ [X]transScore(Z,Ns,P) | (size(diff(Ys,{Z})))>0, (length(Ns)) > 0 
+                        --o [X]note(M,P), [X]refresh(), { [W]transScore(X,Ms,P+1) | W<-Ws }
+                            where (M,Ms) = uncons(Ns),
+                                  Ws = diff(Ys,{Z}).
+
+	rule ret :: { [X]edge(Y) | Y->Ys } \ [X]transScore(Z,Ns,P) | (size(diff(Ys,{Z})))==0, (length(Ns)) > 0
+                        --o [X]note(M,P), [X]refresh(), [Z]transScore(X,Ms,P+1)
+                            where (M,Ms) = uncons(Ns).
+
+	rule end :: [X]src(I) \ [X]transScore(_,Ns,_) | (length(Ns))==0 --o [I]completed().
+
+	rule start :: [X]all(Ls) \ [X]start(T) --o { [L]fire(T) | L<-Ls }.
+
+	rule note :: [X]fire(Tn) \ [X]note(M,P), { [X]note(M,P) } --o [X]play(M,Tm), [X]playLog(M,Tm) where Tm = addSeconds(Tn,P).
+
+	rule clear :: [I]all(Ls), [I]reset() --o { [L]empty() | L<-Ls }.
+
+	rule empty :: [X]empty(), { [X]playLog(_,_) }, { [X]edge(_) }, { [X]src(_) }, { [X]fire(_) } --o 1.
+
+}
+
+execute musicalshares {
+
+	// init L0 as origin(["A5","B5","G5","G4","D5"],[]).
+	// init L1 as node([]).
+	// init L2 as node([]).
+	// init L3 as node([]).
+
+	// [L0]all({L0,L1,L2,L3}).
+	// [L0]neighbor(L1), [L0]neighbor(L2).
+	// [L1]neighbor(L0), [L1]neighbor(L3).
+	// [L2]neighbor(L0), [L2]neighbor(L3).
+	// [L3]neighbor(L1), [L3]neighbor(L2).
+
+	// [L0]build({L0,L1,L2,L3}).
+	// [L0]distribute().
+	// [L0]start().
+
+}
