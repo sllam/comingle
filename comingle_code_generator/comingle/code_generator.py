@@ -2437,7 +2437,7 @@ class JavaTypeCoercion:
 		elif const_name == ast.DEST:
 			return 'String'
 		elif const_name == ast.TIME:
-			return 'Calendar'
+			return 'long' if not boxed else 'Long'
 
 	@visit.when(ast.TypeList)
 	def coerce_type_codes(self, arg_type, boxed=False):
@@ -2466,7 +2466,7 @@ class JavaTypeCoercion:
 		if const_name in [ast.LOC,ast.INT,ast.FLOAT,ast.CHAR,ast.STRING,ast.BOOL,ast.DEST]:
 			return "%s"
 		elif const_name in [ast.TIME]:
-			return "PrettyPrinter.pretty(%s)"
+			return "PrettyPrinter.prettyTime(%s)"
 		else:
 			# TODO: Support other pretty base types
 			return "%s"
