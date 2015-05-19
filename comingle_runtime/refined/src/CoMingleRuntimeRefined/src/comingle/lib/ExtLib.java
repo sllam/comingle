@@ -40,6 +40,10 @@ public class ExtLib {
 	public static <T> int len(LinkedList<T> ls) {
 		return ls.size();
 	}
+
+	public static <T> int length(LinkedList<T> ls) {
+		return ls.size();
+	}
 	
 	public static <T> int size(LinkedList<T> ls) {
 		return ls.size();
@@ -327,13 +331,14 @@ public class ExtLib {
 		return df.format(cal.getTime()); */
 	}
 	
+	/*
 	public static String addSeconds(String date, int secs) {
 		DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		return df.format( new Date(parseDate(date) + (secs*1000)) );
-		/*
-		Calendar newCal = parseCalendar(date);
-		newCal.add(Calendar.SECOND, secs);
-		return df.format(newCal.getTime());*/
+	} */
+	
+	public static long addSeconds(long date, int secs) {
+		return date + (secs * 1000);
 	}
 	
 	public static Long parseDate(String date) {
