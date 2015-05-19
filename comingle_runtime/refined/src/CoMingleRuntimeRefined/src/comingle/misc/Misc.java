@@ -26,6 +26,7 @@ Programming via Join Patterns with Guards, Propagation and More) from the Qatar 
 
 package comingle.misc;
 
+import java.util.Collection;
 import java.util.LinkedList;
 
 import comingle.mset.Multiset;
@@ -45,6 +46,22 @@ public class Misc {
 		SimpMultiset<T> ls = new SimpMultiset<T>();
 		for (int x=0; x<arr.length; x++) {
 			ls.add( arr[x] );
+		}
+		return ls;
+	}
+	
+	public static <T> LinkedList<T> to_list(Collection<T> cs) {
+		LinkedList<T> ls = new LinkedList<T>();
+		for (T c: cs) {
+			ls.add(c);
+		}
+		return ls;
+	}
+	
+	public static <T> SimpMultiset<T> to_mset(Collection<T> cs) {
+		SimpMultiset<T> ls = new SimpMultiset<T>();
+		for (T c: cs) {
+			ls.add(c);
 		}
 		return ls;
 	}
