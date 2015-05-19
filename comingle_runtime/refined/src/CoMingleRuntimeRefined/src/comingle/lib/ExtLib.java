@@ -31,6 +31,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+import comingle.comms.misc.RandGenerator;
 import comingle.comms.ntp.NTPClient;
 import comingle.mset.SimpMultiset;
 import comingle.tuple.*;
@@ -99,9 +100,17 @@ public class ExtLib {
 	
 	public static <T> SimpMultiset<T> pick(SimpMultiset<T> ls, int num) {
 		SimpMultiset<T> os = new SimpMultiset<T>();
+		
+		LinkedList<Integer> indices = new LinkedList<Integer>();
+		for(int x=0; x<ls.size(); x++) {
+			indices.add(x);
+		}
+		
 		for(int i=0; i<num; i++) {
-			if(i<ls.size()) {
-				os.add(ls.get(i));
+			if(indices.size()>0) {
+				int idx = RandGenerator.randFrom(indices);
+				os.add(ls.get( idx ));
+				indices.remove((Object)idx);
 			}
 		}
 		return os;
@@ -319,10 +328,10 @@ public class ExtLib {
 		return localTimeOffset;
 	}
 	
-	public static String timeNow(int secs) {
+	public static long timeNow(long offset) {
 		DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");	
-		long timeInMillis = Calendar.getInstance().getTimeInMillis() - localTimeOffset() + (secs*1000);
-		return df.format( new Date(timeInMillis) );
+		long timeInMillis = Calendar.getInstance().getTimeInMillis() - offset ; // - localTimeOffset() + (secs*1000);
+		return timeInMillis;
 		/*
 		if (secs > 0) {
 			cal.add(Calendar.SECOND, secs);

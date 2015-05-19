@@ -428,4 +428,13 @@ public abstract class RewriteMachine extends Thread {
 		});
 	}
 	
+	protected long rwTimeOffset = -1;
+	public void updateLocalTimeOffset(long offset) {
+		rwTimeOffset = offset;
+	}
+	
+	public long getLocalTimeOffset() {
+		return rwTimeOffset;
+	}
+		
 }

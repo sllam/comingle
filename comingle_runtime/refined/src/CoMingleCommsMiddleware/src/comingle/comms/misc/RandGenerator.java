@@ -26,6 +26,8 @@ Programming via Join Patterns with Guards, Propagation and More) from the Qatar 
 
 package comingle.comms.misc;
 
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.Random;
 
 public class RandGenerator {
@@ -53,6 +55,17 @@ public class RandGenerator {
 	
 	public static long randLong() {
 		return rand.nextLong();
+	}
+	
+	public static <T> T randFrom(Collection<T> ts) {
+		int randIdx = rand.nextInt(ts.size());
+		Iterator<T> it = ts.iterator();
+		T chosen = it.next();
+		while(randIdx > 0) {
+			chosen = it.next();
+			randIdx--;
+		}
+		return chosen;
 	}
 	
 }
