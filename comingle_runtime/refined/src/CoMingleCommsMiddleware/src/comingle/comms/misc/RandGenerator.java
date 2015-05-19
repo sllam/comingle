@@ -51,4 +51,8 @@ public class RandGenerator {
 		return String.format("%s%s%s%s%s", randAlpha(), randAlpha(), randDigit(), randAlpha(), randDigit());
 	}
 	
+	public static long randLong() {
+		return rand.nextLong();
+	}
+	
 }
