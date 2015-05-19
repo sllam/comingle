@@ -26,12 +26,16 @@ Programming via Join Patterns with Guards, Propagation and More) from the Qatar 
 
 package comingle.runtime;
 
+import java.util.Date;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
+import android.os.Handler;
 import android.util.Log;
 import android.widget.Toast;
 import comingle.android.directory.ui.dialogs.DirectoryWifiAdapterDialogBuilder;
@@ -40,9 +44,13 @@ import comingle.android.directory.ui.dialogsequences.DirectoryChosenListener;
 import comingle.comms.datapipe.DataPipeManager;
 import comingle.comms.directory.BaseDirectory;
 import comingle.comms.identity.IdentityGenerator;
+import comingle.comms.lntp.LNTPChannel;
+import comingle.comms.lntp.LNTPClient;
+import comingle.comms.lntp.LNTPServer;
 import comingle.comms.log.Logger;
 import comingle.comms.message.Message;
 import comingle.comms.ntp.PseudoNTPClient;
+import comingle.comms.receiver.ExceptionListener;
 import comingle.comms.sockets.SocketDataPipe;
 import comingle.facts.SerializedFact;
 import comingle.lib.ExtLib;
@@ -281,8 +289,8 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 		if(rewriteMachine != null) {
 			rewriteMachine.stop_rewrite();
 		}
-		if(this.pntpClient != null) {
-			pntpClient.close();
+		if(this.lntpChannel != null) {
+			lntpChannel.close();
 		}
 	}
 	
@@ -371,8 +379,8 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 	}
 
 	@Override
-	protected void handleReceiveException(final Exception e) {
-		err("Error occurred while sending/receiving facts: " + e.toString() );	
+	protected void handleReceiveException(final String task, final Exception e) {
+		err("Error occurred (" + task + "): " + e.toString() );	
 	}
 
 	@Override
@@ -419,6 +427,11 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 		return ExtLib.parseDate(date) + localOffset;
 	}
 	
+	public long getLocalTime(long date) {
+		return date + getLocalTimeOffset();
+	}
+	
+	/*
 	PseudoNTPClient pntpClient = null;
 	public void initPseudoNTPService() {
 		pntpClient = new PseudoNTPClient( directory.mainDir.getOwnerIP() );
@@ -437,6 +450,66 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 			}
 			return localTimeOffset;
 		}
+	}*/
+	
+	Handler handler = null;
+	LNTPChannel lntpChannel = null;
+	Timer timer = null;
+	public void initTimeServices(Handler handler) {
+		if(directory.isOwner()) {
+			lntpChannel = new LNTPServer( directory.mainDir.getOwnerIP() );
+		} else {
+			lntpChannel = new LNTPClient( directory.mainDir.getOwnerIP() );
+		}
+		lntpChannel.setExceptionListener(new ExceptionListener() {
+			@Override
+			public void performExceptionAction(String task, Exception e) {
+				err("Error Occured in Time Service Channel (" + task + ") : " + e.toString());
+			}			
+		});
+		lntpChannel.init();
+		this.handler = handler;
+		this.timer = new Timer();
+	}
+	
+	Long localTimeOffset = null;
+	public long getLocalTimeOffset() {
+		if(localTimeOffset == null) {
+			localTimeOffset = lntpChannel.getTimeOffset();
+		}
+		return localTimeOffset;
+	}
+	
+	public void clearLocalTimeOffset() {
+		localTimeOffset = null;
+	}
+	
+	
+	
+    private class CoMingleTimerTask extends TimerTask {
+    	
+    	final Handler handler;
+    	final Runnable event;
+    	
+    	public CoMingleTimerTask(Handler handler, Runnable event) {
+    		this.handler = handler;
+    		this.event   = event;
+    	}
+    	
+    	@Override
+    	public void run() {
+	        final Thread thread = new Thread(new Runnable() {
+	            public void run() {
+	                handler.post(event);
+	            }
+	        });
+	        thread.start();
+    	}
+    	
+    }
+	
+	public void scheduleAt(Runnable event, long eventTime) {
+		timer.schedule(new CoMingleTimerTask(handler, event), new Date(getLocalTime(eventTime)) );
 	}
 	
 }
