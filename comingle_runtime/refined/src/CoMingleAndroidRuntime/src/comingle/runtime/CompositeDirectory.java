@@ -101,6 +101,10 @@ public class CompositeDirectory extends ListeningPost<Message,String> {
 		return mainDir.getName(loc);
 	}
 	
+	public Map<Integer,String> getNames() {
+		return mainDir.getNames();
+	}
+	
 	///////////////////////////////////////////////////
 	// Android Activity Network Notification Methods //
 	///////////////////////////////////////////////////

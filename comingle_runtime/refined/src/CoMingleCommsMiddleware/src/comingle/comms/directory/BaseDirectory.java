@@ -722,6 +722,20 @@ public abstract class BaseDirectory<D extends Serializable> extends ListeningPos
 		}
 	}
 	
+	/**
+	 * Returns a map containing location to display name mappings
+	 * @return a map containing location to display name mappings
+	 */
+	public Map<Integer,String> getNames() {
+		Map<Integer,String> names = new HashMap<Integer,String>();
+		synchronized(peers) {
+			for(NodeInfo n: peers) {
+				names.put(n.location, n.displayName);
+			}
+		}
+		return names;
+	}
+	
 	/////////////////////////
 	// Listener Operations //
 	/////////////////////////
