@@ -117,10 +117,12 @@ public class LanSetupDialogSequence<D extends Serializable> extends AlertDialogS
 		} else {
 			runDialog( new DirectoryDisplayNameDialogBuilder<D>( activity, directory ) );
 			runDialog( new DirectoryRoleDialogBuilder<D>( activity, directory ) );
-			if( directory.isMember() ) {
-				runDialog( new DirectoryReqCodeDialogBuilder<D>( activity, directory ) );
-			} else {
-				directory.setReqCode( RandGenerator.randReqCode() );
+			if(!directory.hasValidReqCode()) {
+				if( directory.isMember() ) {
+					runDialog( new DirectoryReqCodeDialogBuilder<D>( activity, directory ) );
+				} else {
+					directory.setReqCode( RandGenerator.randReqCode() );
+				}	
 			}
 			directory.establishRole();
 			runDialog( new DirectoryPeerListDialogBuilder<D>(activity, directory, row_res_id, name_res_id, loc_res_id, 

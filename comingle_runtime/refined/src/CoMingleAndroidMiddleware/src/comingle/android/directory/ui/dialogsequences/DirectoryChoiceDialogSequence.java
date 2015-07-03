@@ -160,6 +160,11 @@ public class DirectoryChoiceDialogSequence extends AlertDialogSequence<Message> 
 				directorySetupSeq = new WifiDirectSetupDialogSequence<Message>(activity, directory, row_res_id, 
 			                                     name_res_id, loc_res_id, ip_addr_res_id);
 				break;
+			case DirectoryChoiceDialogBuilder.DEBUG_LAN_CHOSEN:
+				directoryId = LanDirectory.LAN_NETWORK_ID;
+				directorySetupSeq = new LanSetupDialogSequence<Message>(activity, directory, row_res_id, 
+			                                     name_res_id, loc_res_id, ip_addr_res_id);
+				break;
 		}
 		directorySetupSeq.run();
 	}
