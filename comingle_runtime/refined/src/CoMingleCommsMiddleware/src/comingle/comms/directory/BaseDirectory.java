@@ -165,6 +165,14 @@ public abstract class BaseDirectory<D extends Serializable> extends ListeningPos
 	}
 	
 	/**
+	 * Returns true if and only if directory has a valid (non-null) request code
+	 * @return true if and only if directory has a valid (non-null) request code
+	 */
+	public boolean hasValidReqCode() {
+		return reqCode != null;
+	}
+	
+	/**
 	 * Returns the request code of this directory.
 	 * @return the request code of this directory.
 	 */
