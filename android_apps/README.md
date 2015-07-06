@@ -1,16 +1,16 @@
 CoMingle Apps
 =============
 
-Toy Android applications, orchestrated by CoMingle.
+Demo Android applications, orchestrated by CoMingle.
 
 Lead Architect
   - Edmund S. L. Lam (sllam@qatar.cmu.edu)
 
 Android Developers:
   - Ali Elgazar (aee@cmu.edu)
-  - Zeeshan Hanif (zeeshan@cmu.edu)
 
 Alumni Developers:
+  - Zeeshan Hanif 
   - Nabeeha Fatima
 
 Basic Requirements
@@ -21,8 +21,11 @@ To run this apps, you'll need the following:
   - At least two Anroid device, each supporting Wifi-direct connections
 
 I have tested these apps on 2 Nexus 4's running Android Lollipop, and 
-2 Samsung Galaxy S4's running Android KitKat. For now, the current network 
-middleware only supports Wifi-direct.
+2 Samsung Galaxy S4's running Android KitKat. Also, recently tested
+with Sony Xperia Z2, Huawei Ascend Mate 7 and HTC One.
+
+For now, the current network middleware supports Wifi-direct and LAN. 
+Soon to come: Bluetooth and other sensors! (e.g., NFC, GPS, Gyroscope)
 
 Using the Apps
 ==============
@@ -71,6 +74,14 @@ time to time, we will be adding more examples!
   Current version is only a demo: builds a linear chain ensemble and sends 5 notes
   across. We'll soon upgrade it and make it more fun!
 
+- Mafia Party Game
+  Basic version of the Mafia Game (https://en.wikipedia.org/wiki/Mafia_%28party_game%29).
+  In this basic version, we only have Mafia's and Citizen, but the role of the moderator
+  is taken over by the ensemble of mobile Android devices, each held by a player.
+  day and night cycles are orchestrated by timed-synchronized vibrations across the
+  mobile devices. A prototype version is available for download here, but we are working
+  on refining and augmenting it. Stay tuned! 
+
 Note
 ====
 
@@ -94,6 +105,10 @@ Galaxy S4's running Android KitKat. While I'm pretty certain that they are harml
 neither are they intended to do any form of harm to yourself or your mobile device. 
 However, I cannot be liable for any freak accidents that occur while you are running 
 these apps. So please be cautious while using them. 
+
+IMPORTANT!! Be careful about connecting more than six devices via wifi-direct.
+Power consumption on the network owner device is insane! And device will SERIOUSLY
+HEAT UP. Bewarned! And wear thick mittens!  
 
 And don't use your mobile devices while driving or operating heavy machinery. 
 
