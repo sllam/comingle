@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:background="?android:attr/activatedBackgroundIndicator"
+    android:padding="6dip">
+            <TextView
+                android:id="@+id/peer_loc"
+                android:layout_width="fill_parent"
+                android:layout_height="25dp"
+                android:layout_weight="1"
+                android:gravity="center_vertical" />
+            <TextView
+                android:id="@+id/peer_name"
+                android:layout_width="fill_parent"
+                android:layout_height="25dp"
+                android:layout_weight="1"
+                android:gravity="center_vertical" />
+            <TextView
+                android:id="@+id/peer_ip"
+                android:layout_width="fill_parent"
+                android:layout_height="25dp"
+                android:layout_weight="1"
+                android:singleLine="true"
+                android:ellipsize="marquee" />
+</LinearLayout>
