@@ -56,6 +56,7 @@ public class LanSetupDialogSequence<D extends Serializable> extends AlertDialogS
 	protected int name_res_id;
 	protected int loc_res_id;
 	protected int ip_addr_res_id;
+	protected boolean debug;
 	
 	/**
 	 * Basic Constructor
@@ -68,8 +69,32 @@ public class LanSetupDialogSequence<D extends Serializable> extends AlertDialogS
 		dialogs.add(new DirectoryDisplayNameDialogBuilder<D>( activity, directory ));
 		dialogs.add(new DirectoryRoleDialogBuilder<D>( activity, directory )); 
 		this.promptReqCode = false;
+		this.debug = false;
 	}
 	
+	/**
+	 * Standard constructor, that prompts for request codes and displays current directory nodes when
+	 * setup is completed.
+	 * @param activity activity that embeds the dialog boxes.
+	 * @param directory the directory to setup.
+	 * @param row_res_id Resource ID of row view for each node entry.
+	 * @param name_res_id Resource ID of name field for a node.
+	 * @param loc_res_id Resource ID of location field for a node.
+	 * @param ip_addr_res_id Resource ID of address field for a node.
+	 * @param debug debug mode
+	 */
+	public LanSetupDialogSequence(Activity activity, BaseDirectory<D> directory, int row_res_id, 
+            int name_res_id, int loc_res_id, int ip_addr_res_id, boolean debug) {
+		super(activity);
+		this.directory = directory;
+		this.promptReqCode = true;
+		this.row_res_id  = row_res_id;
+		this.name_res_id = name_res_id;
+		this.loc_res_id  = loc_res_id;
+		this.ip_addr_res_id = ip_addr_res_id;
+		this.debug = debug;
+	}
+
 	/**
 	 * Standard constructor, that prompts for request codes and displays current directory nodes when
 	 * setup is completed.
@@ -82,15 +107,9 @@ public class LanSetupDialogSequence<D extends Serializable> extends AlertDialogS
 	 */
 	public LanSetupDialogSequence(Activity activity, BaseDirectory<D> directory, int row_res_id, 
             int name_res_id, int loc_res_id, int ip_addr_res_id) {
-		super(activity);
-		this.directory = directory;
-		this.promptReqCode = true;
-		this.row_res_id  = row_res_id;
-		this.name_res_id = name_res_id;
-		this.loc_res_id  = loc_res_id;
-		this.ip_addr_res_id = ip_addr_res_id;
+		this(activity, directory, row_res_id, name_res_id, loc_res_id, ip_addr_res_id, false);
 	}
-
+	
 	/**
 	 * Run LAN setup dialog sequence. Run customized sequence (see runSeqWithGeneratedReqCode) if request code prompt is omitted.
 	 */
@@ -115,9 +134,13 @@ public class LanSetupDialogSequence<D extends Serializable> extends AlertDialogS
 		if( !directory.isWifiEnabled() ) {
 			runDialog( new DirectoryWifiAdapterDialogBuilder<D>( activity, directory ) );
 		} else {
-			runDialog( new DirectoryDisplayNameDialogBuilder<D>( activity, directory ) );
+			if(!debug) {
+				runDialog( new DirectoryDisplayNameDialogBuilder<D>( activity, directory ) );
+			} else {
+				directory.setDisplayName(RandGenerator.randName());
+			}
 			runDialog( new DirectoryRoleDialogBuilder<D>( activity, directory ) );
-			if(!directory.hasValidReqCode()) {
+			if(!debug) {
 				if( directory.isMember() ) {
 					runDialog( new DirectoryReqCodeDialogBuilder<D>( activity, directory ) );
 				} else {

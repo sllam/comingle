@@ -38,9 +38,9 @@ import comingle.comms.misc.Barrier;
 
 public class DirectoryChoiceDialogBuilder extends DirectoryDialogBuilder<Message> {
 
-	public static final int LAN_CHOSEN = 0;
+	public static final int LAN_CHOSEN = 2;
 	public static final int WIFI_DIRECT_CHOSEN = 1;	
-	public static final int DEBUG_LAN_CHOSEN = 2;
+	public static final int DEBUG_LAN_CHOSEN = 0;
 	
 	protected int adminPort;
 	protected String defaultReqCode;
@@ -57,14 +57,14 @@ public class DirectoryChoiceDialogBuilder extends DirectoryDialogBuilder<Message
 
 	@Override
 	public Builder getDialogBuilder(final Barrier barrier) {
-		final CharSequence[] items = {"Local Area Network","Wifi-Direct","LAN (Debug)"};
-		final SingleChoice choice = new SingleChoice(LAN_CHOSEN);
+		final CharSequence[] items = {"LAN (Debug)","Wifi-Direct","Local Area Network"};
+		final SingleChoice choice = new SingleChoice(DEBUG_LAN_CHOSEN);
 		
 		AlertDialog.Builder alert = new AlertDialog.Builder(activity);
 
 		alert.setTitle("Choose Connection Type");
 		
-		alert.setSingleChoiceItems(items, LAN_CHOSEN, new DialogInterface.OnClickListener() {
+		alert.setSingleChoiceItems(items, DEBUG_LAN_CHOSEN, new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface dialog, int item) {
 				choice.setChoice(item);
