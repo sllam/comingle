@@ -28,6 +28,8 @@ package comingle.comms.misc;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
 
 public class RandGenerator {
@@ -66,6 +68,56 @@ public class RandGenerator {
 			randIdx--;
 		}
 		return chosen;
+	}
+	
+	public static <T> T randFrom(Collection<T> ts, boolean remove) {
+		int randIdx = rand.nextInt(ts.size());
+		Iterator<T> it = ts.iterator();
+		T chosen = it.next();
+		while(randIdx > 0) {
+			chosen = it.next();
+			randIdx--;
+		}
+		if (remove) {
+			ts.remove(chosen);
+		}
+		return chosen;
+	}
+	
+	public static String randName() {
+		int numOfWords = 2;
+		String[] nameGrabBag = {
+				"Super", "Larry", "John", "Uber", "Nuts", "Crap", "Funny", "Serious",
+				"James", "Yoki", "Sally", "Spaz", "Dot", "Moo", "Rug", "Rex", "Silly",
+				"Ox", "Or", "Roll", "Rock", "Paper", "Frag", "Smart", "Ping", "Pong",
+				"Right", "Wrong", "First", "Second", "Third", "Happy", "Sad", "Lonely",
+				"Max", "Mad", "Ok", "Fox", "Cat", "Robo", "Mojo", "Froyo", "Ice", "Fire",
+				"Lame", "Quack", "Punch", "Rush", "Hack", "Argh", "Huh", "Duh", "Lol",
+				"Dork", "Tool", "Rule", "Pawn", "King", "Queen", "Prince", "Price",
+				"Not", "Nox", "Yo", "Hud", "Quick", "Pun", "Run", "Gun", "Mox", "Pox",
+				"Lamb", "Ram", "Cool", "Mind", "Beans", "Pea", "Grab", "Bag", "Fax",
+				"Log", "Pillow", "Jones", "Don", "Dan", "Sal", "Saul", "Sam", "Goof",
+				"Duck", "Mick", "Mike", "Magic", "Misty", "Loop", "Pool", "Pop", "Pot",
+				"Spoon", "Fork", "Razor", "Boot", "Random", "Hex", "Cook", "Fool", 
+				"Axe", "Lock", "Wall", "Soft", "Hey", "Rookie", "Voom", "Doom", "Noon",
+				"Soon", "Walk", "Jump", "Hop", "Stop", "Go", "Good", "Bad", "Nat", "Calm",
+				"Nick", "Weak", "Dull", "Broke", "Hope", "Break", "Splat", "Lad", "Bane",
+				"Kill", "Swing", "Wing", "Ding", "Dong", "Gone", "Ting", "Tong", "Hook",
+				"Dart", "Jock", "Sack", "Luck", "Boo", "Sick", "Time", "Danger", "Even",
+				"Kick", "Hide", "Top", "Down", "Mug", "Free", "Cosy", "Song", "Rite",
+				"Back", "Hate", "Joker", "Quiet", "Hyper", "Best", "Worst", "Fact", 
+				"Name", "Yes", "No", "Nope", "Yay", "Jail", "Box", "Teeth", "Zoo",
+				"Hold", "Grab", "Kid", "Doc", "Zap", "Tap"
+		};
+		List<String> ls = new LinkedList<String>();
+		for(String name: nameGrabBag) {
+			ls.add(name);
+		}
+		String name = "";
+		for(int x=0; x<numOfWords; x++) {
+			name += randFrom(ls, true) + " ";
+		}
+		return name;
 	}
 	
 }

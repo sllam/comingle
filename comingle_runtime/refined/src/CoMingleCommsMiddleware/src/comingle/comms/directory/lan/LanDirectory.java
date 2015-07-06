@@ -246,7 +246,7 @@ abstract public class LanDirectory extends BaseDirectory<Message> implements Mes
 		int count = 0;
 		if(tries < 0) { tries = 10000; }
 		while(count <= tries && !isAccepted() && !isRejected() && !isClosing()) {
-			// log("calling send message...");
+			log("calling send message...");
 			multicastPipe.sendData(String.format("R:%s",reqCode), "");
 			this.sleep(time_out);
 			count++;
