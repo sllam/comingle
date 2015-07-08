@@ -35,12 +35,17 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
+import android.content.Intent;
+import android.nfc.NdefMessage;
 import android.os.Handler;
 import android.util.Log;
 import android.widget.Toast;
 import comingle.android.directory.ui.dialogs.DirectoryWifiAdapterDialogBuilder;
 import comingle.android.directory.ui.dialogsequences.DirectoryChoiceDialogSequence;
 import comingle.android.directory.ui.dialogsequences.DirectoryChosenListener;
+import comingle.android.sensors.nfc.NDefMessageCreator;
+import comingle.android.sensors.nfc.NDefMessageListener;
+import comingle.android.sensors.nfc.NfcSensor;
 import comingle.comms.datapipe.DataPipeManager;
 import comingle.comms.directory.BaseDirectory;
 import comingle.comms.identity.IdentityGenerator;
@@ -114,6 +119,24 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 		this(activity, rwClass, DEFAULT_ADMIN_PORT, DEFAULT_FACT_PORT, defaultReqCode);
 	}
 
+	/////////////////////////////
+	// Android Activity Events //
+	/////////////////////////////
+	
+	public void onResume() {
+		this.resumeNetworkNotifications();
+		this.resumeNFCSensorNotifications();
+	}
+	
+	public void onPause() {
+		this.pauseNetworkNotifications();
+		this.pauseNFCSensorNotifications();
+	}
+	
+	public void onNewIntent(Intent intent) {
+		this.checkNewNFCIntent(intent);
+	}
+	
 	///////////////////////
 	// Directory Methods //
 	///////////////////////
@@ -510,6 +533,69 @@ public class CoMingleAndroidRuntime<RW extends RewriteMachine> extends DataPipeM
 	
 	public void scheduleAt(Runnable event, long eventTime) {
 		timer.schedule(new CoMingleTimerTask(handler, event), new Date(getLocalTime(eventTime)) );
+	}
+	
+	////////////////
+	// NFC Sensor //
+	////////////////
+	
+	protected NfcSensor nfcSensor = null;
+	protected boolean nfcInited = false;
+	
+	protected String nfcMimeType = "application/comingle-runtime-nfc";
+	
+	public boolean initNFCSensor(String nfcMimeType, final RewriteMachineOperation<RW,Integer> ndefMsgListener) {
+		
+		if (nfcInited) { return false; }
+		
+		nfcSensor = new NfcSensor(activity, nfcMimeType);
+		
+		nfcSensor.setNDefMessageCreator(new NDefMessageCreator() {
+			@Override
+			public String onCreateNDefMessage() {
+				return String.format("%s", rewriteMachine.getLocation());
+			}
+		});
+		
+		nfcSensor.setNDefMessageListener(new NDefMessageListener() {
+			@Override
+			public void onReceiveMessage(NdefMessage msg) {
+				final String str = new String(msg.getRecords()[0].getPayload());
+				ndefMsgListener.doAction(rewriteMachine, Integer.parseInt(str));
+			}
+		});
+		
+		nfcInited = true;
+		
+		boolean succ = nfcSensor.init();
+		if(succ) {
+			nfcSensor.resumeSensorNotifications();
+		}
+		return succ;
+	}
+	
+	public boolean initNFCSensor(final RewriteMachineOperation<RW,Integer> ndefMsgListener) {
+		return initNFCSensor(nfcMimeType, ndefMsgListener);
+	}
+	
+	protected void resumeNFCSensorNotifications() {
+		if (nfcSensor != null) {
+			nfcSensor.resumeSensorNotifications();
+			log("NFC Sensor resumed.");
+		}
+	}
+	
+	protected void pauseNFCSensorNotifications() {
+		if (nfcSensor != null) {
+			nfcSensor.pauseSensorNotifications();
+			log("NFC Sensor paused.");
+		}
+	}	
+	
+	protected void checkNewNFCIntent(Intent intent) {
+		if (nfcSensor != null) {
+			nfcSensor.processIntent(intent);
+		}
 	}
 	
 }
