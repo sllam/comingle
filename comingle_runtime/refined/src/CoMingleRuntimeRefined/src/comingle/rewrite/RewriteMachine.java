@@ -252,11 +252,11 @@ public abstract class RewriteMachine extends Thread {
 		}
 	}
 
-	public <F extends Fact> void introLocalGoal(F fact) {
+	public synchronized <F extends Fact> void introLocalGoal(F fact) {
 		goals.add(fact);
 	}
 
-	public <F extends Fact> void introGoal(F fact) {
+	public synchronized <F extends Fact> void introGoal(F fact) {
 		if(neighborhood.getLocation() == fact.get_loc()) {
 			goals.add(fact);
 		} else {
