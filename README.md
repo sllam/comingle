@@ -4,14 +4,23 @@ CoMingle
 CoMingle: Distributed Logic Programming for Decentralized Mobile Ensembles
 
 By Edmund S. L. Lam (sllam@qatar.cmu.edu) and Iliano Cervesato (iliano@cmu.edu), with
-Ali Elgazar (aee@cmu.edu) and Zeeshan Hanif (zeeshan@cmu.edu)
+Ali Elgazar (aee@cmu.edu)
 
 * This implementation was made possible by an JSREP grant (JSREP 4-003-2-001, Effective Distributed 
 Programming via Join Patterns with Guards, Propagation and More) from the Qatar National Research Fund 
 (a member of the Qatar Foundation).
 
+Alumni Developers:
+
+* Zeeshan Hanif
+* Nabeeha Fatima
+
 News
 ====
+
+* Added NFC sensing libraries.
+
+* Added Mafia party game prototype (Its ugly, but it works!). 
 
 * Source codes for CoMingle Android libraries added!
 
