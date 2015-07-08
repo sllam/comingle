@@ -109,14 +109,24 @@ public class NfcSensor implements CreateNdefMessageCallback {
         return mimeRecord;
     }
     
+    protected boolean sensorEnabled = false;
+    
     public void resumeSensorNotifications() {
+    	if(sensorEnabled) { return; }
     	mNfcAdapter.enableForegroundDispatch(activity, mPendingIntent, mFilters, null);
-    	Log.i(TAG, "NFC foreground stuff enabled.");
+    	Log.i(TAG, "NFC foreground dispatch enabled.");
     	
         if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(activity.getIntent().getAction())) {
             processIntent(activity.getIntent());
         }
-    	
+    	sensorEnabled = true;
+    }
+    
+    public void pauseSensorNotifications() {
+    	if(!sensorEnabled) { return; }
+    	mNfcAdapter.disableForegroundDispatch(activity);
+    	Log.i(TAG, "NFC foreground dispatch disabled.");
+    	sensorEnabled = false;
     }
     
     public void processIntent(Intent intent) {
