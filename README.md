@@ -20,7 +20,7 @@ News
 
 * Added NFC sensing libraries.
 
-* Added Mafia party game prototype (Its ugly, but it works!). 
+* Added Mafia party game prototype (It currently looks a little ugly, but it works! =P Stay tuned for updates!). 
 
 * Source codes for CoMingle Android libraries added!
 
