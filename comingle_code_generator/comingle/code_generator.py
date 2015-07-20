@@ -2132,7 +2132,13 @@ class JavaCodeGenerator:
 	def generate_left_pattern(self, t):
 		java_type_coerce = JavaTypeCoercion()
 		
-		if t.term_type == ast.TERM_VAR:
+		if t.term_type == ast.TERM_UNDERSCORE:
+			var_name = self.next_anonymous_var_name()
+			left_context_codes = ""
+			left_pattern_codes = var_name
+			left_postproc_codes = ""
+
+		elif t.term_type == ast.TERM_VAR:
 			var_name = mk_cpp_var_name( t.name )
 			left_context_codes = "" # "%s %s;" % (java_type_coerce.coerce_type_codes( t.type ), var_name)
 			left_pattern_codes = var_name
