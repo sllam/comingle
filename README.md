@@ -18,6 +18,8 @@ Alumni Developers:
 News
 ====
 
+* New paper to appear in preceedings of the 11th IEEE International Conference on Wireless and Mobile Computing, Network and Communications (Wimob2015)
+
 * Added NFC sensing libraries.
 
 * Added Mafia party game prototype (It currently looks a little ugly, but it works! =P Stay tuned for updates!). 
