@@ -28,9 +28,6 @@ News
 
 * New CoMingle runtime now works with Wifi-Direct as well as Local-Area-Networks! 
 
-* To appear in proceeding of the 10th International Federated Conference on Distributed Computing Techniques, Coordination'2015
-(http://discotec2015.inria.fr/francais-coordination-2015-accepted-papers/).
-
 What is CoMingle?
 =================
 
@@ -45,8 +42,14 @@ constraint solving problems. CoMingle extends CHR with multiset comprehension, e
 mechanisms (known as triggers and actuators) that allows its decentralized multiset rewriting semantics to
 interact with an Android application.
 
-For details, please check out our technical report on Comingle: 
-http://reports-archive.adm.cs.cmu.edu/anon/2015/CMU-CS-15-101.pdf
+Publications
+============
+
+* If you like to know more about CoMingle and how it integrates with Android SDK, check out our [technical report](http://www.qatar.cmu.edu/~sllam/my_papers/techreport/SLLAM_TR15-101.pdf) or [Coordination'2015 paper](http://www.qatar.cmu.edu/~sllam/my_papers/published/SLLAM_coordination15.pdf).
+
+* If you like to know more about time synchronizing distributed events in CoMingle, check out our [WiMob'2015 paper](http://www.qatar.cmu.edu/~sllam/my_papers/published/SLLAM_wimob15.pdf).
+
+* If you like to know more about the theory behind decentralized multiset rewriting with comprehension patterns, see our [APlas'2014 paper](http://www.qatar.cmu.edu/~sllam/my_papers/published/SLLAM_aplas14.pdf) and [PPDP'2013 paper](http://www.qatar.cmu.edu/~sllam/my_papers/published/SLLAM_ppdp13.pdf).
 
 Contents
 ========
