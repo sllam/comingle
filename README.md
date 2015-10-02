@@ -31,13 +31,14 @@ News
 What is CoMingle?
 =================
 
-CoMingle is a logic programming framework aimed at simplifying the development of applications distributed over
-multiple mobile devices. Applications are written as a single declarative program (in a system-centric way) rather
-than in the traditional node-centric manner, where separate communicating code is written for each participating node.
-CoMingle is based on committed-choice multiset rewriting and is founded on linear logic.
+CoMingle is a logic, choreographic programming framework for orchestrating applications distributed over
+multiple mobile devices. Distributed computations involving multiple parties are specified as a single declarative 
+program in a ensemble-centric manner, rather than in the traditional node-centric manner, where separate communicating 
+code is written for each participating node.
 
 CoMingle is greatly influenced by Linear Meld, a distributed logic programming for distributed graph algorithms. 
-It is also a descendant of CHR (Constraint Handling Rules), a constraint programming language targeting traditional 
+It is based on committed-choice multiset rewriting and is founded on linear logic, and
+also a descendant of CHR (Constraint Handling Rules), a constraint programming language targeting traditional 
 constraint solving problems. CoMingle extends CHR with multiset comprehension, explicit locations, and
 mechanisms (known as triggers and actuators) that allows its decentralized multiset rewriting semantics to
 interact with an Android application.
