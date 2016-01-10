@@ -45,9 +45,9 @@ CoMingle a highly declarative coordination language for orchrestrating complex d
 computations.
 
 CoMingle integrates with Android applications through a mechanism known as triggers and actuators:
-triggers allow the Android application to signal external events to the CoMingle rewriting semantics,
-while actuators allow CoMingle to impose external side-effects (through callback operations) from 
-events that occur during its rewriting.
+triggers allow an Android application to signal its local events to the CoMingle rewriting semantics,
+while actuators allow CoMingle to impose side-effects on the Android application (through callback 
+operations) from events that occur during its rewriting.
 
 In all, CoMingle programs not only represent easy to read declarative specifications of
 decentralized ensembles, they are executable and provide an intuitive interface to your 
