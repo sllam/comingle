@@ -31,7 +31,7 @@ News
 What is CoMingle?
 =================
 
-CoMingle is a choreographic programming framework for orchestrating applications distributed over
+CoMingle is a coorindation programming framework for orchestrating applications distributed over
 multiple mobile devices. Distributed computations involving multiple parties are specified as a single declarative 
 program in a ensemble-centric manner, rather than in the traditional node-centric manner, where separate communicating 
 code is written for each participating node.
