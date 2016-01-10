@@ -36,12 +36,21 @@ multiple mobile devices. Distributed computations involving multiple parties are
 program in a ensemble-centric manner, rather than in the traditional node-centric manner, where separate communicating 
 code is written for each participating node.
 
-CoMingle is greatly influenced by Linear Meld, a distributed logic programming for distributed graph algorithms. 
-It is based on committed-choice multiset rewriting and is founded on linear logic, and
-also a descendant of CHR (Constraint Handling Rules), a constraint programming language targeting traditional 
-constraint solving problems. CoMingle extends CHR with multiset comprehension, explicit locations, and
-mechanisms (known as triggers and actuators) that allows its decentralized multiset rewriting semantics to
-interact with an Android application.
+CoMingle is greatly influenced by Join Patterns, Constraint Handling Rules and Linear Logic,
+specifying distributed computations as rewriting rules among multisets of events. Events are 
+parametric on computing locations, defining CoMingle's ability to express
+decentralized computations in an ensemble of computing devices. Other features include
+multset comprehension patterns and non-linear pattern matching, that in combination, makes 
+CoMingle a highly declarative coordination language for orchrestrating complex decentralized 
+computations.
+
+CoMingle integrates with Android applications through a mechanism known as triggers and actuators:
+triggers allow the Android application to signal external events to the CoMingle rewriting semantics,
+while actuators allow CoMingle to impose external side-effects (through callback operations) from 
+events that occur during its rewriting.
+
+In all, CoMingle programs not only represent easy to read declarative specifications of a
+decentralized ensemble, it is executable and provides an intuitive interface to your Android applications.
 
 Publications
 ============
