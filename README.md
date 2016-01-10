@@ -31,23 +31,27 @@ News
 What is CoMingle?
 =================
 
-CoMingle is a coorindation programming framework for orchestrating applications distributed over
-multiple mobile devices. Distributed computations involving multiple parties are specified as a single declarative 
-program in a ensemble-centric manner, rather than in the traditional node-centric manner, where separate communicating 
-code is written for each participating node.
+CoMingle is a coorindation programming framework for orchestrating applications distributed 
+over multiple mobile devices. Distributed computations involving multiple parties are 
+specified as a single declarative program in a ensemble-centric manner, rather than in the 
+traditional node-centric manner, where separate communicating code is written for each 
+participating node.
 
 CoMingle is greatly influenced by Join Patterns, Constraint Handling Rules and Linear Logic,
 specifying distributed computations as rewriting rules among multisets of events. Events are 
 parametric on computing locations, defining CoMingle's ability to express
 decentralized computations in an ensemble of computing devices. Other features include
-multset comprehension patterns and non-linear pattern matching, that in combination, makes 
+multiset comprehension patterns and non-linear pattern matching. In combination, these make 
 CoMingle a highly declarative coordination language for orchrestrating complex decentralized 
 computations.
 
 CoMingle integrates with Android applications through a mechanism known as triggers and actuators:
-triggers allow an Android application to signal its local events to the CoMingle rewriting semantics,
-while actuators allow CoMingle to impose side-effects on the Android application (through callback 
-operations) from events that occur during its rewriting.
+triggers allow an Android application to signal occurrences of its local events (e.g., touch input, 
+other UI or app events) to the CoMingle rewriting semantics, while actuators allow CoMingle to 
+impose side-effects on the Android application (through callback operations) associated to events 
+that occur during its rewriting. This means that CoMingle works with native Android SDK APIs and 
+doesn't force you to program local operations and computations differently (you still have everything 
+you love and hate about writing standalone Android apps!)
 
 In all, CoMingle programs not only represent easy to read declarative specifications of
 decentralized ensembles, they are executable and provide an intuitive interface to your 
