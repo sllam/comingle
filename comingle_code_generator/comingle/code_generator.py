@@ -2134,7 +2134,7 @@ class JavaCodeGenerator:
 		
 		if t.term_type == ast.TERM_UNDERSCORE:
 			var_name = self.next_anonymous_var_name()
-			left_context_codes = ""
+			left_context_codes = "%s %s;" % (java_type_coerce.coerce_type_codes( t.type ), var_name)
 			left_pattern_codes = var_name
 			left_postproc_codes = ""
 
@@ -2279,11 +2279,25 @@ class JavaCodeGenerator:
 			term_var = self.next_temp_var_name()
 			inspect = Inspector()
 			# print "%s" % t.inferred_type
-			context_codes.append( "%s[] %s = { %s };" % (java_type_coerce.coerce_type_codes(t.type.type, True),term_var,','.join(t_codes)) )
+			# context_codes.append( "%s[] %s = { %s };" % (java_type_coerce.coerce_type_codes(t.type.type, True),term_var,','.join(t_codes)) )
+			'''
+			sub_term_type = java_type_coerce.coerce_type_codes(t.type.type, True)
+			context_codes.append("%s[] %s = new %s[%s];" % (sub_term_type,term_var,sub_term_type,len(t_codes)) )
+			for idx in range(0,len(t_codes)):
+				context_codes.append( "%s[%s] = %s;" % (term_var,idx,t_codes[idx]) )
+
 			if t.term_type == ast.TERM_LIST:
 				term_codes = "Misc.to_list(%s)" % (term_var)
 			else:
 				term_codes = "Misc.to_mset(%s)" % (term_var)
+			'''
+			term_type = java_type_coerce.coerce_type_codes(t.type, True)
+			context_codes.append( "%s %s = new %s();" % (term_type,term_var,term_type) )
+			for t_code in t_codes:
+				context_codes.append( "%s.add(%s);" % (term_var,t_code) )
+
+			term_codes = term_var
+
 		elif t.term_type == ast.TERM_LISTCONS:
 			cx1,head_code = self.generate_term( t.term1 )
 			cx2,tail_code = self.generate_term( t.term2 )
@@ -2444,6 +2458,10 @@ class JavaTypeCoercion:
 			return 'String'
 		elif const_name == ast.TIME:
 			return 'long' if not boxed else 'Long'
+		elif const_name == ast.FILE:
+			return 'File'
+		elif const_name == ast.OBJECT:
+			return 'Object'
 
 	@visit.when(ast.TypeList)
 	def coerce_type_codes(self, arg_type, boxed=False):
