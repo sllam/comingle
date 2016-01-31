@@ -26,6 +26,7 @@ Programming via Join Patterns with Guards, Propagation and More) from the Qatar 
 
 package comingle.misc;
 
+import java.io.File;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
@@ -55,6 +56,10 @@ public class ToString {
 
 	public static String to_str(Boolean b) { return String.format("%s", b); }
 
+	public static String to_str(File f) { return String.format("%s", f); }
+	
+	public static String to_str(Object o) { return String.format("%s", o); }
+	 
 	public static String to_str(LinkedList<?> ls) {
 		ListIterator<?> it = ls.listIterator();
 		String output = "[";

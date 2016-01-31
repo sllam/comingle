@@ -26,6 +26,7 @@ Programming via Join Patterns with Guards, Propagation and More) from the Qatar 
 
 package comingle.misc;
 
+import java.io.File;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
@@ -56,6 +57,10 @@ public class Equality {
 	public static boolean is_eq(Boolean i, Boolean j) { return i.equals(j); }
 
 	public static boolean is_eq(String i, String j) { return i.equals(j); }
+	
+	public static boolean is_eq(File f1, File f2) { return f1 == f2; }
+
+	public static boolean is_eq(Object o1, Object o2) { return o1 == o2; }
 	
 	public static boolean is_eq(LinkedList<?> ls1, LinkedList<?> ls2) {
 		if (ls1.size() == ls2.size()) {
