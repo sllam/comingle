@@ -26,6 +26,7 @@ Programming via Join Patterns with Guards, Propagation and More) from the Qatar 
 
 package comingle.hash;
 
+import java.io.File;
 import java.util.Calendar;
 import java.util.LinkedList;
 
@@ -81,6 +82,10 @@ public class Hash {
 
 	public static int hash(Double d) { return d.hashCode() + MSRE_HASH_SALT; }
 
+	public static int hash(File f) { return f.hashCode() + MSRE_HASH_SALT; }
+
+	public static int hash(Object o) { return o.hashCode() + MSRE_HASH_SALT; }
+	
 	public static int hash(LinkedList<?> ls) { return ls.hashCode() + MSRE_HASH_SALT; }
 
 	public static int hash(SimpMultiset<?> ms) { return ms.hashCode() + MSRE_HASH_SALT; }
