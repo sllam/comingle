@@ -28,7 +28,7 @@ install:
 	
 	echo "Making temp libraries in ${TMP_PATH}"
 	mkdir ${TMP_PATH}/comingle 
-	cp ${RUNTIME_PATH}/jars/* ${TMP_PATH}/comingle/.
+	cp ${RUNTIME_PATH}/refined/jars/* ${TMP_PATH}/comingle/.
 	cp ${CODEGEN_PATH}/cmgc.py ${TMP_PATH}/comingle/.
 	
 	echo "Moving Comingle libraries to ${CMG_LIB}"
