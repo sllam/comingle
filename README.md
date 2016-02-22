@@ -100,8 +100,11 @@ Getting Started
 ===============
 
 To get Comingle's compiler working, you will first need to have Python 2.7 running. Next, you'll need a couple of
-non-standard Python modules, ply and z3Py. Please proceed to http://www.dabeaz.com/ply/ and https://z3.codeplex.com/
+non-standard Python modules, ply and z3Py. Please proceed to http://www.dabeaz.com/ply/ and https://github.com/Z3Prover/z3
 to get the respective sources and install instructions. 
+
+** Important! You will need to install z3 Python bindings. See docs in https://github.com/Z3Prover/z3 , particularly
+z3 Bindings -> Python 
 
 Once you have them, proceed to https://github.com/sllam/pysetcomp , and install:
 
