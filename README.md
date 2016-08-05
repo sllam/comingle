@@ -18,7 +18,9 @@ Alumni Developers:
 News
 ====
 
-* New paper to appear in preceedings of the 11th IEEE International Conference on Wireless and Mobile Computing, Network and Communications (Wimob2015)
+* New paper on semantics of our language appeared in 10th International Web Rule Symposium (RuleML) 2016, with best paper award (http://2016.ruleml.org/awards)
+
+* New paper appeared in preceedings of the 11th IEEE International Conference on Wireless and Mobile Computing, Network and Communications (Wimob2015)
 
 * Added NFC sensing libraries.
 
@@ -59,6 +61,8 @@ Android applications.
 
 Publications
 ============
+
+* If you like to know the theory behind decentralized execution of CoMingle rules, check out our [RuleML'2016 paper (awarded best paper)](http://www.qatar.cmu.edu/iliano/papers/ruleml16.pdf)
 
 * If you like to know more about CoMingle and how it integrates with Android SDK, check out our [technical report](http://www.qatar.cmu.edu/~sllam/my_papers/techreport/SLLAM_TR15-101.pdf) or [Coordination'2015 paper](http://www.qatar.cmu.edu/~sllam/my_papers/published/SLLAM_coordination15.pdf).
 
