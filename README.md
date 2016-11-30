@@ -62,13 +62,13 @@ Android applications.
 Publications
 ============
 
-* If you like to know the theory behind decentralized execution of CoMingle rules, check out our [RuleML'2016 paper (awarded best paper)](http://www.qatar.cmu.edu/iliano/papers/ruleml16.pdf)
+* If you like to know the theory behind decentralized execution of CoMingle rules, check out our [RuleML'2016 paper (awarded best paper)](https://github.com/sllam/comingle/blob/master/papers/ruleML2016_best_paper.pdf)
 
-* If you like to know more about CoMingle and how it integrates with Android SDK, check out our [technical report](http://www.qatar.cmu.edu/~sllam/my_papers/techreport/SLLAM_TR15-101.pdf) or [Coordination'2015 paper](http://www.qatar.cmu.edu/~sllam/my_papers/published/SLLAM_coordination15.pdf).
+* If you like to know more about CoMingle and how it integrates with Android SDK, check out our [technical report](https://github.com/sllam/comingle/blob/master/papers/cmu-cs-15-101.pdf) or [Coordination'2015 paper](https://github.com/sllam/comingle/blob/master/papers/coordination2015.pdf).
 
-* If you like to know more about time synchronizing distributed events in CoMingle, check out our [WiMob'2015 paper](http://www.qatar.cmu.edu/~sllam/my_papers/published/SLLAM_wimob15.pdf).
+* If you like to know more about time synchronizing distributed events in CoMingle, check out our [WiMob'2015 paper](https://github.com/sllam/comingle/blob/master/papers/wimob2015.pdf).
 
-* If you like to know more about the theory behind decentralized multiset rewriting with comprehension patterns, see our [APlas'2014 paper](http://www.qatar.cmu.edu/~sllam/my_papers/published/SLLAM_aplas14.pdf) and [PPDP'2013 paper](http://www.qatar.cmu.edu/~sllam/my_papers/published/SLLAM_ppdp13.pdf).
+* If you like to know more about the theory behind decentralized multiset rewriting with comprehension patterns, see our [APLAS'2014 paper](https://github.com/sllam/comingle/blob/master/papers/aplas14.pdf) and [PPDP'2013 paper](https://github.com/sllam/comingle/blob/master/papers/ppdp13.pdf).
 
 Contents
 ========
